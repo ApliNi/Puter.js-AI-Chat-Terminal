@@ -1,0 +1,1034 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>[Chat] Loading...</title>
+    <style>
+
+		@font-face {
+			font-family: 'HarmonyOS';
+			font-display: swap;
+			src: url('./HarmonyOS_Sans_SC_Medium.subset.woff2') format('woff2');
+		}
+
+		@font-face {
+			font-family: 'JetBrainsMono';
+			font-display: swap;
+			src: url('./JetBrainsMono-Regular.woff2') format('woff2');
+		}
+
+		@font-face {
+			font-family: 'Ubuntu';
+			font-display: swap;
+			src: url('./Ubuntu-Regular.subset.woff2?v=2') format('woff2'),
+				local('JetBrainsMono');
+			word-spacing: -5px; /*等宽空格间距太大*/
+		}
+
+        :root {
+            --bg-color: #0d0d0d;
+            --sidebar-bg: #0a0a0a;
+            --text-color: #e0e0e0;
+            --border-color: #333;
+            --user-msg-color: #00ff00;
+            --ai-msg-color: #ffffff;
+            --sys-msg-color: #00ccff;
+            --meta-color: #555;
+            --danger-color: #ff3333;
+            --active-item-bg: #161616;
+            --font-stack: 'JetBrainsMono', 'HarmonyOS', 'Segoe UI Emoji', 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, Courier, monospace;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-family: var(--font-stack);
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            font-size: 13px;
+            overflow: hidden;
+        }
+
+        /* --- Global Header --- */
+        header {
+            border-bottom: 1px solid var(--border-color);
+            padding: 0 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: #000;
+            flex-shrink: 0;
+            height: 45px;
+        }
+
+        h1 { font-size: 14px; font-weight: normal; letter-spacing: 1px; color: #fff; font-family: 'Ubuntu', 'HarmonyOS'; }
+
+        .header-controls { display: flex; align-items: center; gap: 15px; }
+
+        .model-select-wrapper { position: relative; }
+        .model-select-wrapper::after {
+            content: '▼'; font-size: 10px; position: absolute; right: 8px; top: 50%;
+            transform: translateY(-50%); pointer-events: none; color: var(--meta-color);
+        }
+
+        select {
+            appearance: none; -webkit-appearance: none;
+            background: #000; color: var(--text-color);
+            border: 1px solid var(--border-color);
+            padding: 4px 25px 4px 10px;
+            font-family: var(--font-stack); font-size: 12px;
+            cursor: pointer; outline: none; border-radius: 0;
+            text-transform: uppercase;
+			max-width: 300px;
+			transition: all 0.3s;
+        }
+        select:hover { border-color: #fff; }
+
+        .status-dot {
+            height: 8px; width: 8px; background: #333; transition: all 0.3s;
+        }
+        .status-dot.active {
+            background: var(--user-msg-color); box-shadow: 0 0 8px var(--user-msg-color);
+        }
+
+        /* --- Chat Container --- */
+        #chat-container {
+            flex: 1;
+            display: flex;
+            overflow: hidden;
+            position: relative;
+        }
+
+        /* --- Sidebar --- */
+        #sidebar {
+            width: 240px;
+            background: var(--sidebar-bg);
+            border-right: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            flex-shrink: 0;
+            font-size: 12px;
+        }
+
+        .sidebar-header {
+            padding: 10px;
+            border-bottom: 1px solid #1a1a1a;
+            text-align: center;
+        }
+
+        #new-chat-btn {
+            background: transparent;
+            color: #666;
+            border: 1px dashed #333;
+            width: 100%;
+            padding: 8px;
+            font-family: var(--font-stack);
+            font-size: 11px;
+            cursor: pointer;
+            text-transform: uppercase;
+            transition: all 0.2s;
+        }
+        #new-chat-btn:hover {
+            color: #fff;
+            border-color: #666;
+            background: rgba(255,255,255,0.05);
+        }
+
+        #history-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 5px 0;
+        }
+
+        .history-item {
+            padding: 10px 15px;
+            cursor: pointer;
+            border-left: 2px solid transparent;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: background 0.2s;
+            color: #888;
+        }
+
+        .history-item:hover { background: #111; color: #ccc; }
+        .history-item.active {
+            background: var(--active-item-bg);
+            border-left-color: var(--user-msg-color);
+            color: #fff;
+        }
+
+        .history-info { flex: 1; overflow: hidden; }
+        .history-title {
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+            margin-bottom: 3px; border: 1px solid transparent;
+            padding: 2px;
+        }
+        /* Editable Title Style */
+        .history-title[contenteditable="plaintext-only"] {
+            background: #000;
+            color: #fff;
+            border: 1px dashed #555;
+            cursor: text;
+			outline: none;
+        }
+
+        .history-date { font-size: 10px; color: #444; font-family: sans-serif; }
+
+        .history-del-btn {
+            background: transparent; border: none; color: #444;
+            cursor: pointer; font-size: 14px; padding: 5px; margin-left: 5px;
+            opacity: 0; transition: all 0.2s;
+        }
+        .history-item.active .history-del-btn, .history-item:hover .history-del-btn { opacity: 1; }
+        .history-del-btn:hover { color: var(--danger-color); }
+
+        /* --- Right Panel --- */
+        #right-panel {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            min-width: 0;
+            background: var(--bg-color);
+        }
+
+        #message-area {
+            flex: 1;
+            padding: 20px 20px 0 20px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .message {
+            max-width: 800px;
+            width: 100%;
+            margin: 0 auto;
+            padding: 10px 15px;
+            border-left: 2px solid transparent;
+            animation: fadeIn 0.3s ease;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .message.user { border-left-color: var(--user-msg-color); background: rgba(0, 255, 0, 0.02); }
+        .message.assistant { border-left-color: var(--ai-msg-color); background: rgba(255, 255, 255, 0.02); }
+        .message.system { border-left-color: var(--sys-msg-color); background: rgba(0, 204, 255, 0.02); }
+
+        .role-label {
+            font-size: 10px; opacity: 0.5; margin-bottom: 6px;
+            display: flex; justify-content: space-between;
+            text-transform: uppercase;
+        }
+
+        .content {
+            white-space: pre-wrap; word-break: break-all; margin-bottom: 6px;
+            outline: none; transition: background 0.2s; background: rgba(255,255,255,0);
+        }
+        .content:focus { background: rgba(255,255,255,0.03); }
+
+        .msg-footer {
+            display: flex; justify-content: space-between; align-items: center;
+            border-top: 1px dashed #222; padding-top: 4px; margin-top: 2px;
+        }
+
+        .left-actions { display: flex; gap: 8px; }
+        .action-btn {
+            background: transparent; border: none;
+            font-family: var(--font-stack); font-size: 9px;
+            cursor: pointer; padding: 0; opacity: 0.5;
+            transition: all 0.2s; text-transform: uppercase;
+        }
+        .action-btn:hover { opacity: 1; }
+        .btn-del, .btn-regen { color: var(--meta-color); }
+        .btn-del:hover, .btn-regen:hover { color: #fff; }
+        .btn-del.confirm-state { color: var(--danger-color); font-weight: bold; opacity: 1; }
+        
+        .meta-stats { font-size: 9px; color: #444; text-align: right; min-height: 14px; }
+
+        /* --- Input Area --- */
+        #input-container {
+            flex-shrink: 0;
+            padding: 20px 20px 40px 20px;
+            background: var(--bg-color);
+            border-top: 1px solid transparent;
+        }
+
+        .input-group {
+            max-width: 800px; margin: 0 auto;
+            display: flex; border: 1px solid var(--border-color);
+        }
+
+        textarea {
+            flex: 1; background: #000; color: var(--text-color);
+            border: none; padding: 12px;
+            font-family: var(--font-stack); font-size: 14px;
+            resize: none; height: 42px; min-height: 42px; max-height: 200px;
+			outline: none;
+        }
+
+        #send-btn {
+            background: #111; color: var(--text-color);
+            border: none; border-left: 1px solid var(--border-color);
+            padding: 0 25px; font-family: var(--font-stack);
+            cursor: pointer; font-weight: bold; text-transform: uppercase;
+            transition: all 0.2s;
+        }
+        #send-btn:hover { background: rgba(255, 255, 255, 0.05); color: #fff; }
+        #send-btn:disabled { background: #111; color: #444; cursor: not-allowed; }
+
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: 0; } }
+        .cursor::after { content: '█'; animation: blink 1s step-end infinite; margin-left: 2px; color: var(--ai-msg-color); }
+        @keyframes blink { 50% { opacity: 0; } }
+
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #000; }
+        ::-webkit-scrollbar-thumb { background: #333; }
+        ::-webkit-scrollbar-thumb:hover { background: #555; }
+
+        /* --- CSS Only Mobile Menu --- */
+
+		/* 默认隐藏菜单按钮 */
+		.menu-btn {
+			display: none;
+			font-size: 20px;
+			cursor: pointer;
+			margin-right: 15px;
+			color: #fff;
+			user-select: none;
+		}
+
+		@media (max-width: 768px) {
+			.menu-btn { display: block; }
+
+			#sidebar {
+				position: absolute;
+				left: -300px;
+				z-index: 100;
+				width: 240px;
+				height: 100%;
+				box-shadow: 10px 0 20px rgba(0,0,0,0.8);
+				transition: left 0.3s;
+			}
+
+			#sidebar-toggle:checked ~ #chat-container #sidebar {
+				left: 0;
+			}
+		}
+    </style>
+</head>
+<body>
+
+<input type="checkbox" id="sidebar-toggle" style="display: none;">
+
+<header>
+	<label for="sidebar-toggle" class="menu-btn">☰</label>
+    <h1>./pChat/ (｡・̀ᴗ-)✧</h1>
+    <div class="header-controls">
+        <div class="model-select-wrapper">
+            <select id="model-select"></select>
+        </div>
+        <div id="status-dot" class="status-dot"></div>
+    </div>
+</header>
+
+<div id="chat-container">
+    <aside id="sidebar">
+        <div class="sidebar-header">
+            <button id="new-chat-btn">[ + NEW SESSION ]</button>
+        </div>
+        <div id="history-list"></div>
+    </aside>
+
+    <main id="right-panel">
+        <div id="message-area"></div>
+        <div id="input-container">
+            <div class="input-group">
+                <textarea id="user-input" placeholder=" > Start typing a prompt" autofocus></textarea>
+                <button id="send-btn">SEND</button>
+            </div>
+        </div>
+    </main>
+</div>
+
+<script src="https://js.puter.com/v2/"></script>
+<script>
+
+	// CONFIG
+	const priorityModels = ['qwen3-max', 'deepseek-v3.2-exp', 'claude-sonnet-4-5', 'gpt-4.1'];
+
+    // --- IndexedDB Manager ---
+    const IDBManager = {
+        dbName: 'PuterChatDB',
+        version: 1,
+        db: null,
+
+        async init() {
+            return new Promise((resolve, reject) => {
+                const request = indexedDB.open(this.dbName, this.version);
+
+                request.onupgradeneeded = (e) => {
+                    const db = e.target.result;
+                    // Store for session metadata (id, title, timestamp)
+                    if (!db.objectStoreNames.contains('sessions')) {
+                        db.createObjectStore('sessions', { keyPath: 'id' });
+                    }
+                    // Store for chat messages (sessionId as key, content as array)
+                    if (!db.objectStoreNames.contains('chats')) {
+                        db.createObjectStore('chats', { keyPath: 'id' });
+                    }
+                };
+
+                request.onsuccess = (e) => {
+                    this.db = e.target.result;
+                    resolve(this.db);
+                };
+
+                request.onerror = (e) => {
+                    console.error("IndexedDB Error:", e);
+                    reject(e);
+                };
+            });
+        },
+
+        async getAllSessions() {
+            return new Promise((resolve, reject) => {
+                const tx = this.db.transaction('sessions', 'readonly');
+                const store = tx.objectStore('sessions');
+                const request = store.getAll();
+                request.onsuccess = () => resolve(request.result || []);
+                request.onerror = () => reject(request.error);
+            });
+        },
+
+        async saveSessionMeta(session) {
+            return new Promise((resolve, reject) => {
+                const tx = this.db.transaction('sessions', 'readwrite');
+                const store = tx.objectStore('sessions');
+                const request = store.put(session);
+                request.onsuccess = () => resolve();
+                request.onerror = () => reject(request.error);
+            });
+        },
+
+        async deleteSession(sessionId) {
+            return new Promise((resolve, reject) => {
+                const tx = this.db.transaction(['sessions', 'chats'], 'readwrite');
+                tx.objectStore('sessions').delete(sessionId);
+                tx.objectStore('chats').delete(sessionId);
+                tx.oncomplete = () => resolve();
+                tx.onerror = () => reject(tx.error);
+            });
+        },
+
+        async getSessionMessages(sessionId) {
+            return new Promise((resolve, reject) => {
+                const tx = this.db.transaction('chats', 'readonly');
+                const store = tx.objectStore('chats');
+                const request = store.get(sessionId);
+                request.onsuccess = () => {
+                    const res = request.result;
+                    resolve(res ? res.messages : []);
+                };
+                request.onerror = () => reject(request.error);
+            });
+        },
+
+        async saveSessionMessages(sessionId, messages) {
+            return new Promise((resolve, reject) => {
+                const tx = this.db.transaction('chats', 'readwrite');
+                const store = tx.objectStore('chats');
+                const request = store.put({ id: sessionId, messages: messages });
+                request.onsuccess = () => resolve();
+                request.onerror = () => reject(request.error);
+            });
+        }
+    };
+
+    // --- DOM Elements ---
+    const messageArea = document.getElementById('message-area');
+    const userInput = document.getElementById('user-input');
+    const sendBtn = document.getElementById('send-btn');
+    const statusDot = document.getElementById('status-dot');
+    const modelSelect = document.getElementById('model-select');
+    const historyList = document.getElementById('history-list');
+    const newChatBtn = document.getElementById('new-chat-btn');
+
+    // --- State Management ---
+    let chatHistory = [];
+    let isProcessing = false;
+    let currentSessionId = null;
+    let sessions = [];
+
+    // --- Utilities ---
+    const generateId = () => 'msg_' + Date.now() + '_' + Math.floor(Math.random() * 10000);
+    const generateSessionId = () => 'sess_' + Date.now();
+    
+    const formatDate = (ts) => {
+        const d = new Date(ts);
+        const year = d.getFullYear();
+        const month = (d.getMonth() + 1).toString().padStart(2, '0');
+        const day = d.getDate().toString().padStart(2, '0');
+        const hour = d.getHours().toString().padStart(2, '0');
+        const minute = d.getMinutes().toString().padStart(2, '0');
+        return `${year}/${month}/${day} ${hour}:${minute}`;
+    };
+
+    // --- Storage Logic (Wrapper around IDBManager) ---
+    async function loadSessionsIndex() {
+        try {
+            sessions = await IDBManager.getAllSessions();
+            renderSidebar();
+        } catch (e) {
+            console.error("Failed to load sessions", e);
+        }
+    }
+
+    async function saveSessionMetaLocal(session) {
+        // Find if exists and update, or push
+        const idx = sessions.findIndex(s => s.id === session.id);
+        if (idx !== -1) {
+            sessions[idx] = session;
+        } else {
+            sessions.push(session);
+        }
+        await IDBManager.saveSessionMeta(session);
+        renderSidebar();
+    }
+
+    async function saveCurrentSession() {
+        if (!currentSessionId) return;
+        await IDBManager.saveSessionMessages(currentSessionId, chatHistory);
+    }
+
+    async function deleteSession(e, sessionId) {
+        e.stopPropagation();
+        if (!confirm('DELETE SESSION PERMANENTLY?')) return;
+
+        sessions = sessions.filter(s => s.id !== sessionId);
+        await IDBManager.deleteSession(sessionId);
+
+        if (sessionId === currentSessionId) {
+            await createNewSession();
+        } else {
+            renderSidebar();
+        }
+    }
+
+    async function renameSession(e, sessionId, newTitle) {
+        const session = sessions.find(s => s.id === sessionId);
+        if (session) {
+            session.title = newTitle;
+            await IDBManager.saveSessionMeta(session);
+        }
+    }
+
+    // --- UI Logic: Sidebar ---
+    function renderSidebar() {
+        historyList.innerHTML = '';
+        const sortedSessions = [...sessions].sort((a, b) => b.timestamp - a.timestamp);
+
+        sortedSessions.forEach(session => {
+            const div = document.createElement('div');
+            div.className = `history-item ${session.id === currentSessionId ? 'active' : ''}`;
+            
+            // Note: We move the onclick to the div, but we need to prevent bubble for edit/delete
+            div.onclick = (e) => {
+                // If we are currently editing a title, don't switch
+                if (e.target.isContentEditable) return;
+                switchSession(session.id);
+				document.getElementById('sidebar-toggle').checked = false;
+            };
+            
+            div.innerHTML = `
+                <div class="history-info">
+                    <div class="history-title" title="Double click to rename">${session.title}</div>
+                    <div class="history-date">${formatDate(session.timestamp)}</div>
+                </div>
+                <button class="history-del-btn">×</button>
+            `;
+
+            // Setup Delete Button
+            const delBtn = div.querySelector('.history-del-btn');
+            delBtn.onclick = (e) => deleteSession(e, session.id);
+
+            // Setup Rename (Double Click)
+            const titleDiv = div.querySelector('.history-title');
+            titleDiv.ondblclick = (e) => {
+                e.stopPropagation(); // Prevent switching session
+                makeTitleEditable(titleDiv, session.id);
+            };
+
+            historyList.appendChild(div);
+        });
+    }
+
+    function makeTitleEditable(element, sessionId) {
+        element.contentEditable = 'plaintext-only';
+        element.focus();
+        
+        // Select all text
+        const range = document.createRange();
+        range.selectNodeContents(element);
+        const sel = window.getSelection();
+        sel.removeAllRanges();
+        sel.addRange(range);
+
+        const save = async () => {
+            element.contentEditable = false;
+            const newTitle = element.innerText.trim() || "Untitled Session";
+            await renameSession(null, sessionId, newTitle);
+            // Re-render to sort or format correctly if needed, or just let it be
+            // renderSidebar(); // Optional: might disrupt if editing multiple
+        };
+
+        const onKeyDown = (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                element.blur();
+            }
+        };
+
+        element.addEventListener('blur', save, { once: true });
+        element.addEventListener('keydown', onKeyDown);
+    }
+
+    async function switchSession(sessionId) {
+        if (isProcessing) return;
+        if (currentSessionId === sessionId) return;
+
+        currentSessionId = sessionId;
+
+		const session = sessions.find(s => s.id === sessionId);
+		if (session) {
+			document.title = `[Chat] ${session.title}`;
+		}
+
+        try {
+            chatHistory = await IDBManager.getSessionMessages(sessionId);
+        } catch (e) {
+            chatHistory = [];
+        }
+        
+        messageArea.innerHTML = '';
+        chatHistory.forEach(msg => {
+            appendMessageToDOM(msg.role, msg.content, msg.id, msg.model || null, false);
+        });
+        
+        renderSidebar();
+        scrollToBottom();
+    }
+
+	async function createIntroSession() {
+		const introId = 'sess_welcome'; // 固定 ID
+		const timestamp = Date.now();
+
+		// 1. 定义欢迎会话的元数据
+		const introSession = {
+			id: introId,
+			title: 'Instructions for use 👋',
+			timestamp: timestamp
+		};
+
+		// 2. 定义预设的聊天记录
+		const introMessages = [
+			{
+				role: 'system',
+				id: 'msg_sys_intro',
+				content: `
+[ Puter.js AI Chat Terminal ]
+
+这是一个基于 Puter.js 的本地化 AI 聊天终端.
+
+## 特性
+- 免费: 无需注册, 无需登录, 无需支付, 通过 Puter.js 提供完全免费的服务.
+- 本地存储: 所有聊天记录通过 IndexedDB 存储在浏览器本地, 除 AI 推理外, 不上传到任何服务器.
+
+## 功能
+- 模型切换: 在右上角下拉菜单中切换模型, 软件会记住上一次使用的模型.
+- 会话管理: 左侧侧边栏选择支持 切换/新建/删除, 双击会话标题可重命名.
+- 消息编辑: 所有消息均支持 编辑/删除, AI 消息支持重新生成.
+
+## 开源
+- [GitHub](https://github.com/ApliNi/Puter.js-AI-Chat-Terminal)
+- [Puter.js](https://github.com/heyPuter/puter)
+
+`,
+			},
+		];
+
+		// 3. 保存到数据库和内存
+		// 注意：这里手动更新内存和DB，不调用 createNewSession 以免逻辑冲突
+		await saveSessionMetaLocal(introSession);
+		await IDBManager.saveSessionMessages(introId, introMessages);
+
+		// 4. 切换到该会话
+		// 由于 saveSessionMetaLocal 已经更新了 sessions 数组，直接 switch 即可
+		await switchSession(introId);
+	}
+
+    async function createNewSession() {
+        if (isProcessing) return;
+        
+        const newId = generateSessionId();
+        const sysMsg = {
+            role: 'system',
+            content: "You are a helpful coding assistant. Answer concisely.",
+            id: generateId(),
+        };
+        
+        const newSession = {
+            id: newId,
+            title: 'New Session',
+            timestamp: Date.now(),
+        };
+
+        currentSessionId = newId;
+        chatHistory = [sysMsg];
+        
+        await saveSessionMetaLocal(newSession);
+        await saveCurrentSession();
+
+        messageArea.innerHTML = '';
+        appendMessageToDOM('system', sysMsg.content, sysMsg.id, 'KERNEL_PROMPT');
+        
+        renderSidebar();
+        userInput.focus();
+    }
+
+    async function updateSessionTitleIfNeeded(userText) {
+        const session = sessions.find(s => s.id === currentSessionId);
+        if (session && session.title === 'New Session') {
+            session.title = userText.substring(0, 18) + (userText.length > 18 ? '...' : '');
+            await saveSessionMetaLocal(session);
+        }
+    }
+
+    // --- Initialization ---
+    window.addEventListener('DOMContentLoaded', async () => {
+        await IDBManager.init();
+        await loadSessionsIndex();
+        
+        // --- 动态加载模型 ---
+        await loadModels();
+        
+        if (sessions.length > 0) {
+            const lastSession = sessions.sort((a, b) => b.timestamp - a.timestamp)[0];
+            await switchSession(lastSession.id);
+        } else {
+			await createIntroSession();
+            await createNewSession();
+        }
+    });
+
+    // --- 获取并渲染模型列表 ---
+    async function loadModels() {
+        try {
+            // 1. 获取模型列表
+            let models = await puter.ai.listModels();
+            
+            // 2. 按提供商或名称简单排序 (可选)
+            models.sort((a, b) => a.id.localeCompare(b.id));
+
+			// 过滤无效的模型
+            models = models.filter(model => model.name);
+
+            modelSelect.innerHTML = '';
+            
+            // 先添加优先模型
+            priorityModels.forEach(pid => {
+                const m = models.find(x => x.id.includes(pid));
+                if(m) createOption(m);
+            });
+            
+			const separator = document.createElement('option');
+			separator.disabled = true;
+            separator.innerText = '──────────';
+            modelSelect.appendChild(separator);
+
+            models.forEach(m => {
+                createOption(m);
+            });
+
+            // 恢复上次选择的模型 (如果有)
+            const savedModel = localStorage.getItem('puter_last_model');
+            if (savedModel && Array.from(modelSelect.options).some(o => o.value === savedModel)) {
+                modelSelect.value = savedModel;
+            }
+
+        } catch (err) {
+            console.error('Failed to load models:', err);
+        }
+    }
+
+    function createOption(model) {
+        const opt = document.createElement('option');
+        opt.value = model.id;
+        // 显示 模型ID 或 更友好的 Name
+        opt.innerText = model.name || model.id;
+        modelSelect.appendChild(opt);
+    }
+
+    // 监听模型改变，保存用户偏好
+    modelSelect.addEventListener('change', () => {
+        localStorage.setItem('puter_last_model', modelSelect.value);
+    });
+
+    newChatBtn.addEventListener('click', () => createNewSession());
+
+    // --- Chat Logic ---
+    userInput.addEventListener('input', function() {
+        this.style.height = (this.scrollHeight) + 'px';
+        if(this.value === '') this.style.height = '0px';
+    });
+
+    userInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            handleSend();
+        }
+    });
+
+    sendBtn.addEventListener('click', () => handleSend());
+
+    async function handleSend() {
+        const text = userInput.value.trim();
+        if (!text || isProcessing) return;
+        
+        userInput.value = '';
+        userInput.style.height = '0px';
+
+        await updateSessionTitleIfNeeded(text);
+
+        const userMsgId = generateId();
+        const userMsg = { role: 'user', content: text, id: userMsgId };
+        chatHistory.push(userMsg);
+        appendMessageToDOM('user', text, userMsgId);
+
+        await saveCurrentSession();
+        await performAIRequest();
+    }
+
+	async function performAIRequest(targetId = null) {
+        if (isProcessing) return;
+        
+        const currentModel = modelSelect.value;
+        toggleState(true);
+
+        let aiMsgId, contextHistory;
+        let uiElements;
+        let fullText = ''; // 用于累积完整的回答
+
+        if (targetId) {
+            aiMsgId = targetId;
+            const targetIndex = chatHistory.findIndex(m => m.id === targetId);
+            if (targetIndex === -1) { toggleState(false); return; }
+            contextHistory = chatHistory.slice(0, targetIndex);
+            
+            const msgDiv = document.getElementById(targetId);
+            const contentDiv = msgDiv.querySelector('.content');
+            const metaDiv = msgDiv.querySelector('.meta-stats');
+            
+            contentDiv.textContent = "";
+            contentDiv.classList.add('cursor'); // 激活光标
+            uiElements = { contentDiv, metaDiv };
+        } else {
+            aiMsgId = generateId();
+            contextHistory = [...chatHistory];
+            uiElements = appendMessageToDOM('assistant', '', aiMsgId, currentModel);
+            uiElements.contentDiv.classList.add('cursor'); // 新消息也激活光标
+        }
+
+		uiElements.metaDiv.style.color = 'var(--text-color)';
+        
+        const startTime = Date.now();
+        const timerInterval = setInterval(() => {
+            const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
+            uiElements.metaDiv.innerText = `GENERATING: ${elapsed}s`;
+        }, 100);
+
+        try {
+            const apiHistory = contextHistory.map(({role, content}) => ({role, content}));
+            
+            const response = await puter.ai.chat(apiHistory, {
+                model: currentModel,
+                stream: true
+            });
+
+            // 2. 循环处理流数据
+            for await (const part of response) {
+                // Puter.js v2 的流式返回对象通常包含 text 属性
+                const delta = part?.text || "";
+                fullText += delta;
+                
+                // 实时更新 UI
+                uiElements.contentDiv.textContent = fullText;
+                scrollToBottom();
+            }
+
+            // 3. 传输结束后的统计
+            clearInterval(timerInterval);
+            const duration = ((Date.now() - startTime) / 1000).toFixed(2);
+            const estimatedTokens = Math.max(1, Math.round(fullText.length / 2.5)); // 估算 Token
+            const tps = (estimatedTokens / duration).toFixed(1);
+
+            uiElements.metaDiv.innerText = `Time: ${duration}s | ${tps} Token/s`;
+
+            // 4. 更新内存中的历史记录
+            if (targetId) {
+				const targetIndex = chatHistory.findIndex(m => m.id === targetId);
+				if (targetIndex !== -1) {
+					chatHistory[targetIndex].content = fullText;
+					// [新增] 更新历史记录中的模型名称
+					chatHistory[targetIndex].model = currentModel;
+					
+					const msgDiv = document.getElementById(targetId);
+					const roleLabel = msgDiv.querySelector('.role-label span:first-child');
+					roleLabel.innerText = currentModel.toUpperCase();
+				}
+			} else {
+				// [修改] 推送新消息时包含 model 字段
+				chatHistory.push({
+					role: 'assistant',
+					content: fullText,
+					id: aiMsgId,
+					model: currentModel,
+				});
+			}
+
+            // 5. 最后再一次性保存到 IndexedDB (避免频繁 IO)
+            await saveCurrentSession();
+
+        } catch (error) {
+            clearInterval(timerInterval);
+            console.error(error);
+            uiElements.contentDiv.textContent += `\n\n[SYSTEM ERROR]: ${error.message}`;
+            uiElements.metaDiv.innerText = `FAIL`;
+            uiElements.metaDiv.style.color = '#ff3333';
+        } finally {
+            // 移除光标样式，恢复按钮状态
+            uiElements.contentDiv.classList.remove('cursor');
+            toggleState(false);
+            if (!targetId) scrollToBottom();
+        }
+    }
+
+    function appendMessageToDOM(role, text, id, modelLabel = null, animate = true) {
+        const msgDiv = document.createElement('div');
+        msgDiv.className = `message ${role}`;
+        if(animate) msgDiv.style.animation = 'fadeIn 0.3s ease';
+        
+        msgDiv.id = id;
+
+        let displayLabel = role.toUpperCase();
+        if (role === 'assistant' && modelLabel) displayLabel = modelLabel.toUpperCase();
+
+        let buttonsHtml = `<button class="action-btn btn-del" onclick="confirmDeleteMsg('${id}')">[DEL]</button>`;
+        if (role === 'assistant') {
+            buttonsHtml = `
+                <div class="left-actions">
+                    <button class="action-btn btn-regen" onclick="regenerateMessage('${id}')">[REGEN]</button>
+                    ${buttonsHtml}
+                </div>
+            `;
+        } else {
+            buttonsHtml = `<div class="left-actions">${buttonsHtml}</div>`;
+        }
+
+        const cursorClass = (role === 'assistant' && text === '') ? 'cursor' : '';
+
+        msgDiv.innerHTML = `
+            <span class="role-label">
+                <span>${displayLabel}</span>
+            </span>
+            <div class="content ${cursorClass}" contenteditable="plaintext-only" spellcheck="false"></div>
+            <div class="msg-footer">
+                ${buttonsHtml}
+                <div class="meta-stats"></div>
+            </div>
+        `;
+
+        const contentArea = msgDiv.querySelector('.content');
+        contentArea.textContent = text;
+
+        messageArea.appendChild(msgDiv);
+        if(animate) scrollToBottom();
+
+        contentArea.addEventListener('input', () => {
+            const newText = contentArea.innerText;
+            updateHistoryContent(id, newText);
+        });
+
+        return {
+            contentDiv: contentArea,
+            metaDiv: msgDiv.querySelector('.meta-stats')
+        };
+    }
+
+    async function updateHistoryContent(id, newText) {
+        const item = chatHistory.find(m => m.id === id);
+        if (item) {
+            item.content = newText;
+            await saveCurrentSession();
+        }
+    }
+
+    window.regenerateMessage = function(id) {
+        if (isProcessing) return;
+        performAIRequest(id);
+    };
+
+    window.confirmDeleteMsg = async function(id) {
+        const btn = document.querySelector(`#${id} .btn-del`);
+        if (!btn) return;
+
+        if (btn.innerText === '[DEL]') {
+            btn.innerText = '[CONFIRM DELETE ?]';
+            btn.classList.add('confirm-state');
+            btn.timer = setTimeout(() => {
+                if (btn) {
+                    btn.innerText = '[DEL]';
+                    btn.classList.remove('confirm-state');
+                    btn.timer = null;
+                }
+            }, 2700);
+        } else {
+            if (btn.timer) clearTimeout(btn.timer);
+            const el = document.getElementById(id);
+            if (el) {
+                el.style.opacity = '0';
+                setTimeout(() => el.remove(), 200);
+            }
+            chatHistory = chatHistory.filter(item => item.id !== id);
+            await saveCurrentSession();
+        }
+    };
+
+    function toggleState(loading) {
+        isProcessing = loading;
+        sendBtn.disabled = loading;
+        modelSelect.disabled = loading;
+        document.querySelectorAll('.btn-regen').forEach(b => b.disabled = loading);
+
+        if (loading) {
+            statusDot.classList.add('active');
+            sendBtn.innerText = "BUSY";
+        } else {
+            statusDot.classList.remove('active');
+            sendBtn.innerText = "SEND";
+        }
+    }
+
+    function scrollToBottom() {
+        messageArea.scrollTop = messageArea.scrollHeight;
+    }
+</script>
+
+</body>
+</html>
