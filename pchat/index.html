@@ -196,13 +196,14 @@
             display: flex;
             flex-direction: column;
             min-width: 0;
+			position: relative;
+            overflow-y: scroll;
             background: var(--bg-color);
         }
 
         #message-area {
             flex: 1;
-            padding: 20px 20px 0 20px;
-            overflow-y: auto;
+            padding: 20px 20px 0px 20px;
             display: flex;
             flex-direction: column;
             gap: 20px;
@@ -257,6 +258,10 @@
 
         /* --- Input Area --- */
         #input-container {
+			position: sticky;
+			bottom: 0;
+			left: 0;
+			right: 0;
             flex-shrink: 0;
             padding: 20px 20px 40px 20px;
             background: var(--bg-color);
@@ -381,10 +386,7 @@
         .markdown-body a {
             color: var(--sys-msg-color);
             text-decoration: none;
-            border-bottom: 1px dotted rgba(0, 204, 255, 0.5);
-        }
-        .markdown-body a:hover {
-            border-bottom-style: solid;
+            border-bottom: none;
         }
 
         /* 表格 */
@@ -412,6 +414,7 @@
             background: rgba(255, 204, 0, 0.1); /* 极淡的琥珀色背景 */
             color: #ffcc00; /* 琥珀色文字 */
             padding: 0 4px;
+			margin: 0 2px;
             border-radius: 2px;
             font-size: 0.95em;
         }
@@ -1156,8 +1159,7 @@
             <span class="role-label">
                 <span>${displayLabel}</span>
             </span>
-			<!-- <div class="content markdown-body ${cursorClass}" contenteditable="plaintext-only" spellcheck="false"></div> -->
-            <div class="content markdown-body ${cursorClass}"></div>
+            <div class="content markdown-body ${cursorClass}" ${role !== 'assistant' ? 'contenteditable="plaintext-only" spellcheck="false"' : ''}></div>
             <div class="msg-footer">
                 ${buttonsHtml}
                 <div class="meta-stats"></div>
