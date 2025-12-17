@@ -8,6 +8,7 @@
 	<meta name="theme-color" content="#202124">
 	<link rel="manifest" href="./manifest.json?v=1">
 	<link rel="icon" href="./favicon.ico">
+	<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex/dist/katex.min.css">
     <style>
 
 		@font-face {
@@ -304,7 +305,7 @@
 
         /* 折叠后的内容样式 */
         .content.collapsed {
-            height: 21px;
+            height: 20px;
             overflow: hidden;
             white-space: nowrap;
             text-overflow: ellipsis;
@@ -778,8 +779,10 @@
 <script type="module">
 	import DOMPurify from 'https://cdn.jsdelivr.net/npm/dompurify@3.3.1/+esm';
 	import hljs from 'https://cdn.jsdelivr.net/npm/highlight.js@11.11.1/+esm';
+	import Katex from 'https://cdn.jsdelivr.net/npm/katex@0.16.27/+esm';
 	import { Marked } from 'https://cdn.jsdelivr.net/npm/marked@17.0.1/+esm';
 	import { markedHighlight } from 'https://cdn.jsdelivr.net/npm/marked-highlight@2.2.3/+esm';
+	import markedKatex from 'https://cdn.jsdelivr.net/npm/marked-katex-extension@5.1.6/+esm';
 	import morphdom from 'https://cdn.jsdelivr.net/npm/morphdom@2.7.7/+esm';
 
 	// CONFIG
@@ -801,17 +804,21 @@
         gfm: true,
     });
 
-	// --- [新增] 自定义渲染器：将 HTML 视为文本 ---
-    marked.use({ renderer: {
-		// 防止 DOMPurify 直接删除 HTML 文本
-		html({ text }){
-            return text.replace(/&/g, '&amp;')
-                       .replace(/</g, '&lt;')
-                       .replace(/>/g, '&gt;')
-                       .replace(/"/g, '&quot;')
-                       .replace(/'/g, '&#039;');
-        },
-	}});
+	marked.use(markedKatex({ throwOnError: false, nonStandard: true }));
+
+    marked.use({
+		// 将 HTML 视为文本
+		renderer: {
+			// 防止 DOMPurify 直接删除 HTML 文本
+			html({ text }){
+				return text.replace(/&/g, '&amp;')
+						.replace(/</g, '&lt;')
+						.replace(/>/g, '&gt;')
+						.replace(/"/g, '&quot;')
+						.replace(/'/g, '&#039;');
+			},
+		},
+	});
 
     // --- IndexedDB Manager ---
     const IDBManager = {
@@ -1300,7 +1307,12 @@
         const newId = generateSessionId();
         const sysMsg = {
             role: 'system',
-            content: 'You are a helpful coding assistant. Answer concisely.',
+            content: `
+## Format
+- Use \`\\n\\n$$ ... $$\\n\` to display a block-level formula.
+---
+You are a helpful coding assistant. Answer concisely.
+`.trim(),
             id: generateId(),
         };
         
