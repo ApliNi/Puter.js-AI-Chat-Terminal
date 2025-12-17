@@ -275,14 +275,12 @@
         /* 同样为不同角色的底部栏提供微调背景（可选，建议与 Header 保持一致） */
         .message.user .role-label, .message.user .msg-footer {
             background: rgba(13, 20, 13, 0.95);
-            border-top-color: rgba(0, 255, 0, 0.1);
         }
         .message.assistant .role-label, .message.assistant .msg-footer {
             background: rgba(20, 20, 20, 0.95);
         }
         .message.system .role-label, .message.system .msg-footer {
             background: rgba(13, 20, 25, 0.95);
-            border-top-color: rgba(0, 204, 255, 0.1);
         }
 
         /* 修正：在吸附状态下，确保统计文字不会太暗 */
@@ -346,7 +344,7 @@
         .cursor::after { content: '█'; animation: blink 1s step-end infinite; margin-left: 2px; color: var(--ai-msg-color); }
         @keyframes blink { 50% { opacity: 0; } }
 
-        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar { width: 7px; height: 8px; }
         ::-webkit-scrollbar-track { background: #000; }
         ::-webkit-scrollbar-thumb { background: #333; }
         ::-webkit-scrollbar-thumb:hover { background: #555; }
@@ -357,7 +355,27 @@
             color: var(--text-color);
             background: transparent;
             word-wrap: break-word;
+			margin-top: -5px;
         }
+
+		.markdown-body details {
+			padding: 10px;
+			transition: all 0.2s;
+			cursor: pointer;
+		}
+		.markdown-body details summary {
+			cursor: pointer;
+			user-select: none;
+		}
+		.markdown-body details:open {
+			background-color: rgba(255,255,255,0.05);
+			margin-bottom: 14px;
+			cursor: default;
+		}
+		.markdown-body details.think summary {
+			color: var(--sys-msg-color);
+			font-weight: bold;
+		}
 
         /* 标题：大幅减小间距，使用更细腻的下划线 */
         .markdown-body h1, .markdown-body h2, .markdown-body h3,
@@ -1170,17 +1188,37 @@
             
             const response = await puter.ai.chat(apiHistory, {
                 model: currentModel,
-                stream: true
+                stream: true,
             });
 
             // 2. 循环处理流数据
+			let think = false;
             for await (const part of response) {
-                // Puter.js v2 的流式返回对象通常包含 text 属性
-                const delta = part?.text || "";
-                fullText += delta;
+                // 处理不同输出
+				if(part.type === 'reasoning'){
+					// 添加思考折叠框
+					if(think === false) fullText += `<details class="think"><summary>THINK</summary>\n\n`;
+					think = true;
+					fullText += (part?.reasoning || '');
+				}
+				if(part.type === 'text'){
+					// 结束思考折叠框
+					if(think === true) fullText += `\n\n</details>\n\n`;
+					think = false;
+					fullText += (part?.text || '');
+				}
+
+				// 渲染前记录所有 details 的状态
+				const detailsOpenStateList = Array.from(uiElements.contentDiv.querySelectorAll('details')).map(d => d.open);
                 
-                const rawHTML = marked.parse(fullText);
-                uiElements.contentDiv.innerHTML = DOMPurify.sanitize(rawHTML);
+				// 渲染新内容
+				uiElements.contentDiv.innerHTML = DOMPurify.sanitize(marked.parse(fullText));
+
+				// 恢复 details 的打开状态
+				const detailsList = uiElements.contentDiv.querySelectorAll('details');
+				for(let i = 0; i < detailsList.length; i++) {
+					detailsList[i].open = detailsOpenStateList[i];
+				}
 
                 scrollToBottom();
             }
