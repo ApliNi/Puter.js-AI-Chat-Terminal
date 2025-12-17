@@ -35,7 +35,7 @@
             --text-color: #e0e0e0;
             --border-color: #333;
             --user-msg-color: #00ff00;
-            --ai-msg-color: #ffffff;
+            --ai-msg-color: #747474;
             --sys-msg-color: #00ccff;
             --meta-color: #848484;
             --danger-color: #ff3333;
@@ -344,10 +344,13 @@
         .cursor::after { content: '█'; animation: blink 1s step-end infinite; margin-left: 2px; color: var(--ai-msg-color); }
         @keyframes blink { 50% { opacity: 0; } }
 
-        ::-webkit-scrollbar { width: 7px; height: 8px; }
+        ::-webkit-scrollbar { width: 7px; height: 7px; }
         ::-webkit-scrollbar-track { background: #000; }
         ::-webkit-scrollbar-thumb { background: #333; }
         ::-webkit-scrollbar-thumb:hover { background: #555; }
+		::-webkit-scrollbar-corner { background: #333; }
+
+		::selection { background: #34beff33; }
 
 		/* --- Compact Terminal Markdown Style --- */
         .markdown-body {
@@ -473,6 +476,7 @@
             padding: 0 4px;
             border-radius: 2px;
             font-size: 0.95em;
+			user-select: all;
         }
 
         /* 代码块：深色背景，无圆角 */
@@ -482,7 +486,9 @@
             padding: 10px;
             border-radius: 0px;
             overflow-x: auto;
+            overflow-y: auto;
 			margin: 0.8em 0;
+			max-height: 450px;
         }
         
         .markdown-body pre code {
@@ -831,11 +837,13 @@
             
             div.innerHTML = `
                 <div class="history-info">
-                    <div class="history-title" title="Double click to rename">${session.title}</div>
+                    <div class="history-title" title="Double click to rename"></div>
                     <div class="history-date">${formatDate(session.timestamp)}</div>
                 </div>
                 <button class="history-del-btn">×</button>
             `;
+
+			div.querySelector('.history-title').innerText = session.title || 'New Session';
 
             // 删除按钮逻辑
             const delBtn = div.querySelector('.history-del-btn');
@@ -900,7 +908,7 @@
 
         const save = async () => {
             element.contentEditable = false;
-            const newTitle = element.innerText.trim() || "Untitled Session";
+            const newTitle = element.innerText.trim() || 'Untitled Session';
             await renameSession(null, sessionId, newTitle);
             // Re-render to sort or format correctly if needed, or just let it be
             // renderSidebar(); // Optional: might disrupt if editing multiple
@@ -1005,7 +1013,7 @@
         
         const newSession = {
             id: newId,
-            title: 'New Session',
+            title: '',
             timestamp: Date.now(),
         };
 
@@ -1024,8 +1032,8 @@
 
     async function updateSessionTitleIfNeeded(userText) {
         const session = sessions.find(s => s.id === currentSessionId);
-        if (session && session.title === 'New Session') {
-            session.title = userText.substring(0, 18) + (userText.length > 18 ? '...' : '');
+        if (session && session.title === '') {
+            session.title = userText.substring(0, 32).replaceAll(/[\r\n]/g, ' ');
             await saveSessionMetaLocal(session);
         }
     }
@@ -1266,14 +1274,13 @@
         }
     }
 
-    function appendMessageToDOM(role, text, id, modelLabel = null, animate = true) {
+        function appendMessageToDOM(role, text, id, modelLabel = null, animate = true) {
         const msgDiv = document.createElement('div');
         msgDiv.className = `message ${role}`;
         if(animate) msgDiv.style.animation = 'fadeIn 0.3s ease';
         msgDiv.id = id;
 
         // 1. 确定默认状态
-        // AI 默认渲染 (isRendered = true), 用户/系统 默认源码 (isRendered = false)
         const isDefaultRendered = (role === 'assistant');
         msgDiv.dataset.rendered = isDefaultRendered;
 
@@ -1287,19 +1294,18 @@
             regenBtn = `<button class="action-btn btn-regen" onclick="regenerateResponseTo('${id}')">[REGEN]</button>`;
         }
 
-        // 组合按钮
+        // 组合按钮：在 Regen 和 Del 之间添加 Fork
         let buttonsHtml = `
             <div class="left-actions">
                 ${regenBtn}
+                <button class="action-btn" onclick="forkSession('${id}')">[FORK]</button>
                 <button class="action-btn btn-del" onclick="confirmDeleteMsg('${id}')">[DEL]</button>
             </div>
         `;
 
         const cursorClass = (role === 'assistant' && text === '') ? 'cursor' : '';
-        // 只有在源码模式下才允许编辑 (plaintext-only)，渲染模式下禁止直接编辑 (false)
         const editableState = isDefaultRendered ? 'false' : 'plaintext-only';
 
-        // 新增 toggle 按钮
         const toggleBtn = `<button class="action-btn btn-toggle" onclick="toggleMessageView('${id}')">${isDefaultRendered ? '[RAW]' : '[RENDER]'}</button>`;
 
         msgDiv.innerHTML = `
@@ -1313,28 +1319,23 @@
                 <div class="meta-stats"></div>
             </div>
         `;
-
+        
         const contentArea = msgDiv.querySelector('.content');
         
-        // 3. 初始内容填充
         if (isDefaultRendered) {
-            // 如果是 AI，且有内容，则渲染 MD
             if (text) {
                 contentArea.innerHTML = DOMPurify.sanitize(marked.parse(text));
             }
         } else {
-            // 如果是用户/系统，显示纯文本
             contentArea.textContent = text;
         }
 
         messageArea.appendChild(msgDiv);
         if(animate) scrollToBottom();
 
-        // 4. 监听输入事件 (仅在 contenteditable 为 true 时有效，即源码模式)
         contentArea.addEventListener('input', () => {
-            // 只有在源码模式下才保存，防止渲染模式下的意外改动
             if (msgDiv.dataset.rendered === 'false') {
-                const newText = contentArea.innerText; // innerText 获取纯文本
+                const newText = contentArea.innerText;
                 updateHistoryContent(id, newText);
             }
         });
@@ -1485,6 +1486,40 @@
             chatHistory = chatHistory.filter(item => item.id !== id);
             await saveCurrentSession();
         }
+    }
+
+    window.forkSession = async function(id) {
+        // 如果正在生成内容，禁止操作，防止数据不一致
+        if (isProcessing) return;
+
+        // 1. 找到当前点击消息的索引
+        const index = chatHistory.findIndex(m => m.id === id);
+        if (index === -1) return;
+
+        // 2. 截取历史记录：从开头到当前消息 (使用深拷贝断开引用关联)
+        const forkedHistory = JSON.parse(JSON.stringify(chatHistory.slice(0, index + 1)));
+
+        // 3. 准备新会话的数据
+        const newSessionId = generateSessionId();
+        
+        // 获取原标题，如果没有则叫 New Session
+        const currentTitle = sessions.find(s => s.id === currentSessionId)?.title || 'New Session';
+        const newTitle = `[Fork] ${currentTitle}`;
+
+        const newSession = {
+            id: newSessionId,
+            title: newTitle,
+            timestamp: Date.now(),
+        };
+
+        // 4. 保存新会话元数据到侧边栏列表
+        await saveSessionMetaLocal(newSession);
+        
+        // 5. 保存截取后的消息内容到 IndexedDB
+        await IDBManager.saveSessionMessages(newSessionId, forkedHistory);
+
+        // 6. 切换到新会话
+        await switchSession(newSessionId);
     }
 
     function toggleState(loading) {
