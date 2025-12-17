@@ -624,6 +624,17 @@
 			user-select: none;
 		}
 
+		@media (max-width: 970px) {
+
+			#minimap {
+				right: -100px;
+			}
+
+			#sidebar-toggle:checked ~ #chat-container #minimap {
+                right: 7px;
+            }
+		}
+
 		@media (max-width: 1200px) {
 			.menu-btn { display: block; }
 
@@ -640,14 +651,6 @@
 			#sidebar-toggle:checked ~ #chat-container #sidebar {
 				left: 0;
 			}
-
-			#minimap {
-				right: -100px;
-			}
-
-			#sidebar-toggle:checked ~ #chat-container #minimap {
-                right: 7px;
-            }
 
 			header h1 { display: none; }
 
