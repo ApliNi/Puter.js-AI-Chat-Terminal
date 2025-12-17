@@ -712,6 +712,18 @@
         gfm: true,
     });
 
+	// --- [新增] 自定义渲染器：将 HTML 视为文本 ---
+    marked.use({ renderer: {
+		// 防止 DOMPurify 直接删除 HTML 文本
+		html({ text }){
+            return text.replace(/&/g, '&amp;')
+                       .replace(/</g, '&lt;')
+                       .replace(/>/g, '&gt;')
+                       .replace(/"/g, '&quot;')
+                       .replace(/'/g, '&#039;');
+        },
+	}});
+
     // --- IndexedDB Manager ---
     const IDBManager = {
         dbName: 'PuterChatDB',
@@ -740,7 +752,7 @@
                 };
 
                 request.onerror = (e) => {
-                    console.error("IndexedDB Error:", e);
+                    console.error('IndexedDB Error:', e);
                     reject(e);
                 };
             });
@@ -872,7 +884,7 @@
             sessions = await IDBManager.getAllSessions();
             renderSidebar();
         } catch (e) {
-            console.error("Failed to load sessions", e);
+            console.error('Failed to load sessions', e);
         }
     }
 
@@ -1043,6 +1055,8 @@
 		if (isProcessing) return;
 		if (currentSessionId === sessionId && messageArea.innerHTML !== '') return;
 
+		localStorage.setItem('puter_last_session_id', sessionId);
+
 		currentSessionId = sessionId;
 		const session = sessions.find(s => s.id === sessionId);
 		if (session) {
@@ -1141,7 +1155,7 @@
         const newId = generateSessionId();
         const sysMsg = {
             role: 'system',
-            content: "You are a helpful coding assistant. Answer concisely.",
+            content: 'You are a helpful coding assistant. Answer concisely.',
             id: generateId(),
         };
         
@@ -1152,6 +1166,9 @@
         };
 
         currentSessionId = newId;
+
+		localStorage.setItem('puter_last_session_id', newId);
+
         chatHistory = [sysMsg];
         
         await saveSessionMetaLocal(newSession);
@@ -1176,17 +1193,31 @@
     // --- Initialization ---
     window.addEventListener('DOMContentLoaded', async () => {
         await IDBManager.init();
+		// 异步加载模型
+        loadModels();
+
         await loadSessionsIndex();
-        
-        // --- 动态加载模型 ---
-        await loadModels();
-        
+
+        // [修改] 恢复上次会话逻辑
         if (sessions.length > 0) {
-            const lastSession = sessions.sort((a, b) => b.timestamp - a.timestamp)[0];
-            await switchSession(lastSession.id);
+            // 1. 获取上次保存的 ID
+            const lastId = localStorage.getItem('puter_last_session_id');
+            // 2. 检查该 ID 是否还存在于当前的会话列表中
+            const lastSessionExists = sessions.some(s => s.id === lastId);
+
+            if (lastSessionExists) {
+                // 如果存在，加载上次的会话
+                await switchSession(lastId);
+            } else {
+                // 如果不存在（或从未保存过），加载时间最近的一个
+                const lastSession = sessions.sort((a, b) => b.timestamp - a.timestamp)[0];
+                await switchSession(lastSession.id);
+            }
         } else {
-			await createIntroSession();
-            await createNewSession();
+            await createIntroSession();
+            // IntroSession 创建后会自动切换，所以这里不需要手动 switch
+            // 但如果用户删除了 Intro，这里需要保底
+            if (!currentSessionId) await createNewSession();
         }
     });
 
@@ -1261,7 +1292,15 @@
         }
     });
 
-    sendBtn.addEventListener('click', () => handleSend());
+    sendBtn.addEventListener('click', async () => {
+		await handleSend();
+		setTimeout(() => {
+			window.scrollTo({
+				top: document.body.scrollHeight,
+				behavior: 'smooth',
+			});
+		}, 50);
+	});
 
     async function handleSend() {
         const text = userInput.value.trim();
@@ -1739,10 +1778,10 @@
 
         if (loading) {
             statusDot.classList.add('active');
-            sendBtn.innerText = "BUSY";
+            sendBtn.innerText = 'BUSY';
         } else {
             statusDot.classList.remove('active');
-            sendBtn.innerText = "SEND";
+            sendBtn.innerText = 'SEND';
         }
     }
 
