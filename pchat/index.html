@@ -302,7 +302,7 @@
         .action-btn:hover { color: #fff; }
         .btn-del.confirm-state { color: var(--danger-color); font-weight: bold; opacity: 1; }
         
-        .meta-stats { font-size: 9px; color: #444; text-align: right; min-height: 14px; }
+        .meta-stats { font-size: 9px; color: var(--text-color); text-align: right; min-height: 14px; }
 
         /* --- Input Area --- */
         #input-container {
@@ -945,7 +945,7 @@
         
         // 简化：直接把 content 传进去，appendMessageToDOM 会自己判断是渲染 MD 还是显示纯文本
 		for(const msg of chatHistory){
-            const els = appendMessageToDOM(msg.role, msg.content, msg.id, msg.model || null, false);
+            const els = appendMessageToDOM(msg.role, msg.content, msg.id, msg.model || null, false, msg.stats);
             els.contentDiv.classList.remove('cursor');
 		}
         
@@ -1173,7 +1173,7 @@
 
             msgDiv.querySelector('.role-label span:first-child').innerText = currentModel.toUpperCase();
             
-            contentDiv.textContent = "";
+            contentDiv.textContent = '';
             contentDiv.classList.add('cursor'); // 激活光标
             uiElements = { contentDiv, metaDiv };
         } else {
@@ -1182,8 +1182,6 @@
             uiElements = appendMessageToDOM('assistant', '', aiMsgId, currentModel);
             uiElements.contentDiv.classList.add('cursor'); // 新消息也激活光标
         }
-
-		uiElements.metaDiv.style.color = 'var(--text-color)';
         
         const startTime = Date.now();
         const timerInterval = setInterval(() => {
@@ -1236,24 +1234,27 @@
             const duration = ((Date.now() - startTime) / 1000).toFixed(2);
             const estimatedTokens = Math.max(1, Math.round(fullText.length / 2.5)); // 估算 Token
             const tps = (estimatedTokens / duration).toFixed(1);
-
-            uiElements.metaDiv.innerText = `Time: ${duration}s | ${tps} Token/s`;
+            
+            // [修改] 定义统计文本变量
+            const statsText = `Time: ${duration}s | ${tps} Token/s`;
+            uiElements.metaDiv.innerText = statsText;
 
             // 4. 更新内存中的历史记录
             if (targetId) {
 				const targetIndex = chatHistory.findIndex(m => m.id === targetId);
 				if (targetIndex !== -1) {
 					chatHistory[targetIndex].content = fullText;
-					// [新增] 更新历史记录中的模型名称
 					chatHistory[targetIndex].model = currentModel;
+                    // [新增] 保存统计信息
+                    chatHistory[targetIndex].stats = statsText;
 				}
 			} else {
-				// [修改] 推送新消息时包含 model 字段
 				chatHistory.push({
 					role: 'assistant',
 					content: fullText,
 					id: aiMsgId,
 					model: currentModel,
+                    stats: statsText,
 				});
 			}
 
@@ -1274,7 +1275,7 @@
         }
     }
 
-        function appendMessageToDOM(role, text, id, modelLabel = null, animate = true) {
+        function appendMessageToDOM(role, text, id, modelLabel = null, animate = true, stats = null) {
         const msgDiv = document.createElement('div');
         msgDiv.className = `message ${role}`;
         if(animate) msgDiv.style.animation = 'fadeIn 0.3s ease';
@@ -1339,6 +1340,10 @@
                 updateHistoryContent(id, newText);
             }
         });
+
+		if (stats) {
+            msgDiv.querySelector('.meta-stats').innerText = stats;
+        }
 
         return {
             contentDiv: contentArea,
@@ -1443,7 +1448,7 @@
 
             // 2. 创建 DOM 元素
             // 先通过 appendMessageToDOM 创建（默认会加到最后）
-            appendMessageToDOM('assistant', '', newAiId, currentModel, false);
+            appendMessageToDOM('assistant', '', newAiId, currentModel, false, null);
             
             // 3. 将 DOM 元素移动到正确位置 (即 userId 对应的元素之后)
             const userDiv = document.getElementById(id);
