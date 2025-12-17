@@ -94,7 +94,7 @@
         #model-select:hover { border-color: #fff; }
 
         .status-dot {
-            height: 8px; width: 8px; background: #333; transition: all 0.3s;
+            height: 8px; min-width: 8px; max-width: 8px; background: #333; transition: all 0.3s;
         }
         .status-dot.active {
             background: var(--user-msg-color); box-shadow: 0 0 8px var(--user-msg-color);
@@ -1083,10 +1083,10 @@
 
             // 2. 移动端：长按重命名
             let pressTimer;
-            const longPressDuration = 600; // 长按 600ms 触发
+            let longPressDuration = 500; // 长按 500ms 触发
 
-            titleDiv.addEventListener('touchstart', (e) => {
-                // 启动定时器
+			const touchstartFunc = (e) => {
+				// 启动定时器
                 pressTimer = setTimeout(() => {
                     // 触发震动反馈 (如果设备支持)
                     if (navigator.vibrate) navigator.vibrate(50);
@@ -1097,17 +1097,28 @@
                     // 阻止默认菜单 (防止长按弹出浏览器菜单)
                     e.preventDefault();
                 }, longPressDuration);
-            }, { passive: false });
+			};
+			const clearTimeoutFunc = () => {
+				if (pressTimer) clearTimeout(pressTimer);
+			};
 
-            titleDiv.addEventListener('touchend', () => {
-                // 手指抬起，清除定时器
-                if (pressTimer) clearTimeout(pressTimer);
-            });
+			// 移动端按下
+            titleDiv.addEventListener('touchstart', (e) => {
+				longPressDuration = 500;
+				touchstartFunc(e);
+			}, { passive: false });
 
-            titleDiv.addEventListener('touchmove', () => {
-                // 手指移动 (说明在滚动列表)，清除定时器
-                if (pressTimer) clearTimeout(pressTimer);
-            });
+			// 鼠标按下
+            titleDiv.addEventListener('mousedown', (e) => {
+				longPressDuration = 300; // 鼠标点击响应更快
+				touchstartFunc(e);
+			}, { passive: false });
+
+			// 抬起
+            titleDiv.addEventListener('touchend', clearTimeoutFunc);
+			titleDiv.addEventListener('mouseup', clearTimeoutFunc);
+			// 移动
+            titleDiv.addEventListener('touchmove', clearTimeoutFunc);
             
             // 防止长按默认弹出的上下文菜单干扰
             titleDiv.addEventListener('contextmenu', (e) => {
@@ -1157,7 +1168,7 @@
 		currentSessionId = sessionId;
 		const session = sessions.find(s => s.id === sessionId);
 		if (session) {
-			document.title = `[Chat] ${session.title}`;
+			updateTitle(session.title);
 		}
 
 		try {
@@ -1184,6 +1195,14 @@
 		
 		renderSidebar();
 		scrollToBottom(true, true);
+	}
+
+	async function updateTitle(title) {
+		if ('serviceWorker' in navigator) {
+			document.title = `${title}`;
+		    return;
+		}
+		document.title = `[Chat] ${title}`;
 	}
 
 	async function createIntroSession() {
@@ -1278,6 +1297,7 @@
         
         renderSidebar();
         userInput.focus();
+		updateTitle('New Session');
     }
 
     async function updateSessionTitleIfNeeded(userText) {
