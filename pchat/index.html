@@ -774,6 +774,7 @@
 	import hljs from 'https://cdn.jsdelivr.net/npm/highlight.js@11.11.1/+esm';
 	import { Marked } from 'https://cdn.jsdelivr.net/npm/marked@17.0.1/+esm';
 	import { markedHighlight } from 'https://cdn.jsdelivr.net/npm/marked-highlight@2.2.3/+esm';
+	import morphdom from 'https://cdn.jsdelivr.net/npm/morphdom@2.7.7/+esm';
 
 	// CONFIG
 	const priorityModels = ['qwen3-max', 'gemini-3-pro', 'gemini-2.5', 'deepseek-v3.2-exp', 'claude-sonnet-4-5', 'gpt-4.1'];
@@ -1530,27 +1531,30 @@
 					fullText += (part?.text || '');
 				}
 
-				// 渲染前记录所有 details 的状态
-				const detailsOpenStateList = Array.from(uiElements.contentDiv.querySelectorAll('details')).map(d => d.open);
-				// 记录所有 pre 的滚动条状态
-				const preScrollTopList = Array.from(uiElements.contentDiv.querySelectorAll('pre')).map(pre => [pre.scrollLeft, pre.scrollTop]);
-                
 				// 渲染新内容
-				uiElements.contentDiv.innerHTML = DOMPurify.sanitize(marked.parse(fullText));
+				const newHtmlContent = DOMPurify.sanitize(marked.parse(fullText));
+				morphdom(uiElements.contentDiv, `<div>${newHtmlContent}</div>`, {
+					childrenOnly: true,
+					onBeforeElUpdated: (from, to) => {
+						// 如果节点内容完全一致, 直接跳过更新
+						if (from.isEqualNode(to)) {
+							return false;
+						}
 
-				// 恢复 details 的打开状态
-				const detailsList = uiElements.contentDiv.querySelectorAll('details');
-				for(let i = 0; i < detailsList.length; i++){
-					if(detailsOpenStateList[i] === undefined) continue;
-					detailsList[i].open = detailsOpenStateList[i];
-				}
-				// 恢复 pre 的滚动条状态
-				const preList = uiElements.contentDiv.querySelectorAll('pre');
-				for(let i = 0; i < preList.length; i++){
-					if(preScrollTopList[i] === undefined) continue;
-					preList[i].scrollLeft = preScrollTopList[i][0];
-					preList[i].scrollTop = preScrollTopList[i][1];
-				}
+						// 保持 details 的打开状态
+						if (from.tagName === 'DETAILS') {
+							to.open = from.open;
+						}
+
+						// 保持 pre 的滚动条状态
+						if (from.tagName === 'PRE') {
+							to.scrollLeft = from.scrollLeft;
+							to.scrollTop = from.scrollTop;
+						}
+
+						return true;
+					},
+				});
 
                 scrollToBottom();
             }
