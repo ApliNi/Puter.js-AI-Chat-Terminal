@@ -1918,7 +1918,14 @@
         
         // 获取原标题，如果没有则叫 New Session
         const currentTitle = sessions.find(s => s.id === currentSessionId)?.title || 'New Session';
-        const newTitle = `[Fork] ${currentTitle}`;
+        let newTitle;
+		if(currentTitle.startsWith('[Fork')){
+			// 使用数值叠加 Fork 次数
+			const forkCount = parseInt(currentTitle.match(/^\[Fork (\d+)\]/)?.[1] || '0');
+			newTitle = `[Fork ${forkCount + 1}] ${currentTitle.replace(/^\[Fork( \d+)?\] /, '')}`;
+		}else{
+			newTitle = `[Fork] ${currentTitle}`;
+		}
 
         const newSession = {
             id: newSessionId,
