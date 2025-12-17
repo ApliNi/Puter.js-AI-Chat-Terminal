@@ -1327,7 +1327,7 @@
         if (session && session.title === '') {
             session.title = userText.trim().substring(0, 32).replace(/\s+/g, ' ');
             await saveSessionMetaLocal(session);
-			updateTitle(session.title);All
+			updateTitle(session.title);
         }
     }
 
