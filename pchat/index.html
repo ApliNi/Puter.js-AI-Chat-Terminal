@@ -1218,15 +1218,7 @@
 		minimap.innerHTML = '';
 		
 		for(const msg of chatHistory){
-			const els = appendMessageToDOM(
-				msg.role,
-				msg.content,
-				msg.id,
-				msg.model || null,
-				false,
-				msg.stats,
-				msg.isCollapsed,
-			);
+			const els = appendMessageToDOM({ ...msg, animate: false });
 			els.contentDiv.classList.remove('cursor');
 		}
 		
@@ -1310,6 +1302,7 @@
         const newId = generateSessionId();
         const sysMsg = {
             role: 'system',
+			isCollapsed: true,
             content: `
 ## Format
 - Use \`\\n\\n$$ ... $$\\n\` to display a block-level formula.
@@ -1336,7 +1329,7 @@ You are a helpful coding assistant. Answer concisely.
 
         messageArea.innerHTML = '';
 		minimap.innerHTML = '';
-        appendMessageToDOM('system', sysMsg.content, sysMsg.id, 'KERNEL_PROMPT');
+		appendMessageToDOM({ ...sysMsg, model: 'SYSTEM' });
         
         renderSidebar();
         userInput.focus();
@@ -1475,7 +1468,7 @@ You are a helpful coding assistant. Answer concisely.
         const userMsgId = generateId();
         const userMsg = { role: 'user', content: text, id: userMsgId };
         chatHistory.push(userMsg);
-        appendMessageToDOM('user', text, userMsgId);
+		appendMessageToDOM({ role: 'user', content: text, id: userMsgId });
 
 		setTimeout(() => {
 			rightPanel.scrollTo({
@@ -1519,7 +1512,7 @@ You are a helpful coding assistant. Answer concisely.
         } else {
             aiMsgId = generateId();
             contextHistory = [...chatHistory];
-            uiElements = appendMessageToDOM('assistant', '', aiMsgId, currentModel);
+			uiElements = appendMessageToDOM({ role: 'assistant', content: '', id: aiMsgId, model: currentModel });
             uiElements.contentDiv.classList.add('cursor'); // 新消息也激活光标
         }
         
@@ -1640,7 +1633,15 @@ You are a helpful coding assistant. Answer concisely.
         }
     }
 
-    function appendMessageToDOM(role, text, id, modelLabel = null, animate = true, stats = null, isCollapsed = false) {
+    function appendMessageToDOM({
+        role,
+        content,
+        id,
+        model = null,
+        animate = true,
+        stats = null,
+        isCollapsed = false,
+	}) {
 		const msgDiv = document.createElement('div');
 		msgDiv.className = `message ${role}`;
 		if(animate) msgDiv.style.animation = 'fadeIn 0.3s ease';
@@ -1651,7 +1652,7 @@ You are a helpful coding assistant. Answer concisely.
 		msgDiv.dataset.rendered = isDefaultRendered;
 
 		let displayLabel = role.toUpperCase();
-		if (role === 'assistant' && modelLabel) displayLabel = modelLabel.toUpperCase();
+		if (role === 'assistant' && model) displayLabel = model.toUpperCase();
 
 		let regenBtn = '';
 		if (role === 'assistant') {
@@ -1668,7 +1669,7 @@ You are a helpful coding assistant. Answer concisely.
 			</div>
 		`;
 
-		const cursorClass = (role === 'assistant' && text === '') ? 'cursor' : '';
+		const cursorClass = (role === 'assistant' && content === '') ? 'cursor' : '';
 		const editableState = isDefaultRendered ? 'false' : 'plaintext-only';
 
 		// --- [修改] --- 根据 isCollapsed 状态决定按钮文字
@@ -1706,11 +1707,11 @@ You are a helpful coding assistant. Answer concisely.
 		const contentArea = msgDiv.querySelector('.content');
 		
 		if (isDefaultRendered) {
-			if (text) {
-				contentArea.innerHTML = DOMPurify.sanitize(marked.parse(text));
+			if (content) {
+				contentArea.innerHTML = DOMPurify.sanitize(marked.parse(content));
 			}
 		} else {
-			contentArea.textContent = text;
+			contentArea.textContent = content;
 		}
 
 		messageArea.appendChild(msgDiv);
@@ -1871,7 +1872,7 @@ You are a helpful coding assistant. Answer concisely.
 
             // 2. 创建 DOM 元素
             // 先通过 appendMessageToDOM 创建（默认会加到最后）
-            appendMessageToDOM('assistant', '', newAiId, currentModel, false, null);
+            appendMessageToDOM({ role: 'assistant', content: '', id: newAiId, model: currentModel });
             
             // 3. 将 DOM 元素移动到正确位置 (即 userId 对应的元素之后)
             const userDiv = document.getElementById(id);
