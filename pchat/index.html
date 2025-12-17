@@ -1997,11 +1997,20 @@
 			alert('The current browser does not support the Document Picture-in-Picture API.');
 			return;
 		}
+
 		const pipWindow = await window.documentPictureInPicture.requestWindow({
 			width: 450,
-			height: 650,
+			height: 570,
 		});
 
+		pipWindow.document.body.style.backgroundColor = '#000';
+		pipWindow.document.body.style.overflowX = 'hidden';
+		pipWindow.document.body.style.overflowY = 'hidden';
+		pipWindow.document.body.style.margin = '0';
+		pipWindow.document.body.style.padding = '0';
+		pipWindow.document.body.style.lineHeight = '0';
+		pipWindow.document.body.style.fontSize = '0';
+		pipWindow.document.body.style.height = '100vh';
 		const iframe = document.createElement('iframe');
 		iframe.src = './';
 		iframe.frameborder = '0';
@@ -2009,14 +2018,6 @@
 		iframe.style.height = '100vh';
 		iframe.style.border = 'none';
 		pipWindow.document.body.append(iframe);
-		pipWindow.document.body.style.margin = '0';
-		pipWindow.document.body.style.padding = '0';
-		pipWindow.document.body.style.height = '100vh';
-		pipWindow.document.body.style.lineHeight = '0';
-		pipWindow.document.body.style.fontSize = '0';
-		pipWindow.document.body.style.backgroundColor = '#000';
-		pipWindow.document.body.style.overflowX = 'hidden';
-		pipWindow.document.body.style.overflowY = 'hidden';
 	});
 
     function toggleState(loading) {
