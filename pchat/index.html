@@ -392,6 +392,8 @@
 			right: 7px;
 			top: 0;
 			bottom: 0;
+			z-index: 300;
+			transition: right 0.3s;
 			pointer-events: none;
         }
 
@@ -421,11 +423,6 @@
         .minimap-item.user { border-left-color: var(--user-msg-color); background: rgba(0, 255, 0, 0.05); }
         .minimap-item.assistant { border-left-color: var(--ai-msg-color); background: rgba(255, 255, 255, 0.05); }
         .minimap-item.system { border-left-color: var(--sys-msg-color); background: rgba(0, 204, 255, 0.05); }
-
-        /* 手机端隐藏小地图 */
-        @media (max-width: 1200px) {
-            #minimap { display: none; }
-        }
 
         ::-webkit-scrollbar { width: 7px; height: 7px; }
         ::-webkit-scrollbar-track { background: #000; }
@@ -627,7 +624,7 @@
 			user-select: none;
 		}
 
-		@media (max-width: 768px) {
+		@media (max-width: 1200px) {
 			.menu-btn { display: block; }
 
 			#sidebar {
@@ -643,6 +640,14 @@
 			#sidebar-toggle:checked ~ #chat-container #sidebar {
 				left: 0;
 			}
+
+			#minimap {
+				right: -100px;
+			}
+
+			#sidebar-toggle:checked ~ #chat-container #minimap {
+                right: 7px;
+            }
 
 			header h1 { display: none; }
 
