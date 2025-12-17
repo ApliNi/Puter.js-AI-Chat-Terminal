@@ -750,6 +750,7 @@
 		<div class="sidebar-footer">
             <button id="import-btn">IMPORT</button>
             <button id="export-btn">EXPORT</button>
+            <button id="pip-window-btn">PIP</button>
             <input type="file" id="import-input" accept=".json" style="display: none;">
         </div>
     </aside>
@@ -937,6 +938,7 @@
 	const importBtn = document.getElementById('import-btn');
     const exportBtn = document.getElementById('export-btn');
     const importInput = document.getElementById('import-input');
+	const pipWindowBtn = document.getElementById('pip-window-btn');
 
     // --- State Management ---
     let chatHistory = [];
@@ -1987,6 +1989,34 @@
         };
         reader.readAsText(file);
     });
+
+	// 画中画窗口
+	pipWindowBtn.addEventListener('click', async () => {
+	    if (!('documentPictureInPicture' in window)) {
+			alert('The current browser does not support the Document Picture-in-Picture API.');
+			return;
+		}
+		const pipWindow = await window.documentPictureInPicture.requestWindow({
+			width: 450,
+			height: 650,
+		});
+
+		const iframe = document.createElement('iframe');
+		iframe.src = './';
+		iframe.frameborder = '0';
+		iframe.style.width = '100%';
+		iframe.style.height = '100vh';
+		iframe.style.border = 'none';
+		pipWindow.document.body.append(iframe);
+		pipWindow.document.body.style.margin = '0';
+		pipWindow.document.body.style.padding = '0';
+		pipWindow.document.body.style.height = '100vh';
+		pipWindow.document.body.style.lineHeight = '0';
+		pipWindow.document.body.style.fontSize = '0';
+		pipWindow.document.body.style.backgroundColor = '#000';
+		pipWindow.document.body.style.overflowX = 'hidden';
+		pipWindow.document.body.style.overflowY = 'hidden';
+	});
 
     function toggleState(loading) {
         isProcessing = loading;
