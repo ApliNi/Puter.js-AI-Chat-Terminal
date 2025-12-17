@@ -1455,8 +1455,8 @@
         appendMessageToDOM('user', text, userMsgId);
 
 		setTimeout(() => {
-			window.scrollTo({
-				top: document.body.scrollHeight,
+			rightPanel.scrollTo({
+				top: rightPanel.scrollHeight,
 				behavior: 'smooth',
 			});
 		}, 50);
