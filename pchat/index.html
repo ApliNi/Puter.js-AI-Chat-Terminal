@@ -1210,24 +1210,25 @@
         element.addEventListener('keydown', onKeyDown);
     }
 
-    async function switchSession(sessionId) {
+    async function switchSession(id) {
 		if (isProcessing) return;
-		if (currentSessionId === sessionId && messageArea.innerHTML !== '') return;
+		if (currentSessionId === id && messageArea.innerHTML !== '') return;
 
-		localStorage.setItem('puter_last_session_id', sessionId);
+		localStorage.setItem('puter_last_session_id', id);
 
-		currentSessionId = sessionId;
-		const session = sessions.find(s => s.id === sessionId);
+		currentSessionId = id;
+		const session = sessions.find(s => s.id === id);
 		if (session) {
 			updateTitle(session.title);
 		}
 
 		try {
-			chatHistory = await IDBManager.getSessionMessages(sessionId);
+			chatHistory = await IDBManager.getSessionMessages(id);
 		} catch (e) {
 			chatHistory = [];
 		}
 		
+		rightPanel.scrollTop = 0;	// 防止继承上一个聊天的滚动位置
 		messageArea.innerHTML = '';
 		minimap.innerHTML = '';
 		
@@ -1237,7 +1238,11 @@
 		}
 		
 		renderSidebar();
-		scrollToBottom(true, true);
+
+		// 欢迎会话不滚动到底部
+		if(id !== 'sess_welcome'){
+			scrollToBottom(true, true);
+		}
 	}
 
 	async function updateTitle(title) {
