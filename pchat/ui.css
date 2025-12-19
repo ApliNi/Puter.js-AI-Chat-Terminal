@@ -632,7 +632,9 @@ h1 { font-size: 14px; font-weight: normal; letter-spacing: 1px; color: #fff; fon
 	overflow-x: auto;
 	overflow-y: auto;
 	margin: 0.8em 0;
-	max-height: 444px;
+	min-height: 240px;
+	height: 37vh;
+	max-height: 470px;
 }
 
 .markdown-body pre code {
