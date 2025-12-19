@@ -611,15 +611,13 @@ You are a helpful coding assistant. Answer concisely.
 		
 		const newSession = {
 			id: newId,
-			title: '',
+			title: 'New Session',
 			timestamp: Date.now(),
 		};
 
 		currentSessionId = newId;
 
 		cfg.setItem('lastSessionId', newId);
-
-		chatHistory = [sysMsg];
 		
 		await saveSessionMetaLocal(newSession);
 		await saveCurrentSession();
