@@ -501,7 +501,7 @@
             border-bottom: 1px solid #333; /* 实线比虚线更干净 */
             padding-bottom: 4px;
             line-height: 1.3;
-			margin: 0.8em 0;
+			margin: 1.4em 0 0.5rem 0;
         }
         
         /* 稍微区分一下标题等级 */
@@ -866,14 +866,14 @@
 
 					<h2>模型服务</h2>
 
-					<details class="think model-service service-puter-js" open><summary>Puter.js</summary>
+					<details class="think model-service" data-service="Puter.js" open><summary>Puter.js</summary>
 
 						<h2>优先显示模型</h2>
 
 						<table class="input-config-table">
 							<tr>
 								<td>优先匹配模型列表:</td>
-								<td><input type="text" placeholder="qwen3-max, gemini-3-pro, deepseek-v3.2-exp" value="https://api.openai.com/v1/completions"></td>
+								<td><input id="puterPriorityModelsInput" type="text" placeholder="qwen3-max, gemini-3-pro, deepseek-v3.2-exp" value=""></td>
 							</tr>
 						</table>
 
@@ -885,7 +885,7 @@
 
 					</details>
 
-					<details class="think model-service service-openai-api" open><summary>OpenAI API</summary>
+					<details class="think model-service" data-service="OpenAI-API"><summary>OpenAI API</summary>
 
 						<h2>API 配置</h2>
 

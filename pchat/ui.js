@@ -199,6 +199,7 @@ window.addEventListener('DOMContentLoaded', async () => {
 	let cfg = {
 		puter_priorityModels: ['qwen3-max', 'gemini-3-pro', 'gemini-2.5', 'deepseek-v3.2-exp', 'claude-sonnet-4-5', 'gpt-4.1'],
 		lastSessionId: null,
+		modelService: 'Puter.js',
 
 		...await IDBManager.getConfig(),
 		setItem: (...args) => IDBManager.setConfig(...args),
@@ -729,9 +730,7 @@ You are a helpful coding assistant. Answer concisely.
 		const currentModel = modelSelect.value;
 		toggleState(true);
 
-		let aiMsgId, contextHistory;
-		let uiElements;
-		let fullText = ''; // 用于累积完整的回答
+		let aiMsgId, contextHistory, uiElements;
 
 		if (targetId) {
 			aiMsgId = targetId;
@@ -757,6 +756,8 @@ You are a helpful coding assistant. Answer concisely.
 			uiElements = appendMessageToDOM({ role: 'assistant', content: '', id: aiMsgId, model: currentModel });
 			uiElements.contentDiv.classList.add('cursor'); // 新消息也激活光标
 		}
+
+		uiElements.metaDiv.style.color = '';
 		
 		const startTime = Date.now();
 		const timerInterval = setInterval(() => {
@@ -775,6 +776,7 @@ You are a helpful coding assistant. Answer concisely.
 			// 2. 循环处理流数据
 			let isRendering = 0;
 			let think = false;
+			let fullText = '';
 			for await (const part of response) {
 
 				// 处理不同输出
@@ -1299,6 +1301,34 @@ You are a helpful coding assistant. Answer concisely.
 		const exportBtn = document.getElementById('export-btn');
 		const importInput = document.getElementById('import-input');
 		const resetPuterData = document.getElementById('reset-puter-data');
+		const puterPriorityModelsInput = document.getElementById('puterPriorityModelsInput');
+
+		// 配置页面数据更新和监听
+		if(true){
+
+			const modelServiceList = document.querySelectorAll('.config details.model-service');
+			for(const e of modelServiceList){
+				const service = e.dataset.service;
+				e.open = cfg.modelService === service;
+				e.addEventListener('toggle', () => {
+					if(!e.open) return;
+					// 折叠其他所有服务
+					setTimeout(() => {
+						for(const e2 of modelServiceList){
+							if(service !== e2.dataset.service) e2.open = false;
+						}
+					}, 100);
+					// 保存选择的服务
+					cfg.setItem('modelService', service);
+				});
+			}
+
+			puterPriorityModelsInput.value = cfg.puter_priorityModels.join(', ');
+			puterPriorityModelsInput.addEventListener('input', () => {
+				const list = puterPriorityModelsInput.value.split(/\,|\;|，|；/).map(s => s.trim()).filter(s => s);
+				cfg.setItem('puter_priorityModels', list);
+			});
+		}
 
 		// 打开配置界面
 		configBtn.addEventListener('click', async () => {
