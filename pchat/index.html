@@ -1,120 +1,120 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-	<meta name="keywords" content="AI, Chat, Puter.js, Free, Qwen, DeepSeek, Claude, GPT">
-	<meta name="description" content="基于 Puter.js 的本地免费 AI 聊天">
-	<meta name="theme-color" content="#202124">
-    <title>[Chat] Loading...</title>
-	<link rel="stylesheet" href="./ui.css">
-	<link rel="icon" href="./favicon.ico">
-	<link rel="manifest" href="./manifest.json?v=1">
-</head>
-<body>
+	<head>
+		<meta charset="UTF-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1.0">
+		<meta name="keywords" content="AI, Chat, Puter.js, Free, Qwen, DeepSeek, Claude, GPT">
+		<meta name="description" content="基于 Puter.js 的本地免费 AI 聊天">
+		<meta name="theme-color" content="#202124">
+		<title>[Chat] Loading...</title>
+		<link rel="stylesheet" href="./ui.css">
+		<link rel="icon" href="./favicon.ico">
+		<link rel="manifest" href="./manifest.json?v=1">
+	</head>
+	<body style="display: none;">
 
-<input type="checkbox" id="sidebar-toggle" style="display: none;">
+		<input type="checkbox" id="sidebar-toggle" style="display: none;">
 
-<header>
-	<label for="sidebar-toggle" class="menu-btn">☰</label>
-    <h1>[pChat.IpacEL.cc] (｡・̀ᴗ-)✧</h1>
-    <div class="header-controls">
-        <div class="model-select-wrapper">
-            <select id="model-select"></select>
-        </div>
-        <div id="status-dot" class="status-dot"></div>
-    </div>
-</header>
-
-<div id="chat-container">
-    <aside id="sidebar">
-        <div class="sidebar-header">
-            <button id="new-chat-btn">[ + NEW SESSION ]</button>
-        </div>
-        <div id="history-list"></div>
-		<div class="sidebar-footer">
-            <button id="config-btn" style="flex: 0.4;">CONFIG</button>
-            <button id="pip-window-btn">PIP</button>
-        </div>
-    </aside>
-
-    <main id="right-panel">
-        <div id="message-area" class="message-area"></div>
-        <div id="input-container">
-            <div class="input-group">
-                <textarea id="user-input" placeholder=" > Start typing a prompt" autofocus></textarea>
-                <button id="send-btn">SEND</button>
-            </div>
-        </div>
-		
-		<!-- config -->
-		<div id="config" class="message-area config" style="display: none;">
-			<div class="message system">
-				<span class="role-label"><span>CONFIG</span></span>
-				<div class="content markdown-body">
-
-					<h2>导入 / 导出</h2>
-					<p>在这里导入导出所有会话:
-						<button id="import-btn">[IMPORT]</button>
-						<button id="export-btn">[EXPORT]</button>
-						<input type="file" id="import-input" accept=".json" style="display: none;">
-					</p>
-
-					<h2>模型服务</h2>
-
-					<details class="think model-service" data-service="Puter.js" open><summary>Puter.js</summary>
-
-						<h2>优先显示模型</h2>
-
-						<table class="input-config-table">
-							<tr>
-								<td>优先匹配模型列表:</td>
-								<td><input id="puterPriorityModelsInput" type="text" placeholder="qwen3-max, gemini-3-pro, deepseek-v3.2-exp" value=""></td>
-							</tr>
-						</table>
-
-						<h2>重置 puter.js</h2>
-						<p>删除 puter.js 相关的数据 (不会删除聊天记录):
-							<button id="reset-puter-data">[RESET]</button>
-						</p>
-						<p>可能还需要前往 <a href="https://puter.com/" target="_blank">https://puter.com/</a> 删除所有 Cookie 来刷新账户.</p>
-
-					</details>
-
-					<details class="think model-service" data-service="OpenAI-API"><summary>OpenAI API</summary>
-
-						<h2>API 配置</h2>
-
-						<table class="input-config-table">
-							<tr>
-								<td>API 端点:</td>
-								<td><input type="text" placeholder="https://api.openai.com/v1/completions" value="https://api.openai.com/v1/completions"></td>
-							</tr>
-							<tr>
-								<td>API 密钥:</td>
-								<td><input type="text" placeholder="sk-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"></td>
-							</tr>
-							<tr>
-								<td>优先匹配模型列表:</td>
-								<td><input type="text" placeholder="qwen3-max, gemini-3-pro, deepseek-v3.2-exp"></td>
-							</tr>
-						</table>
-
-						<p>此功能正在开发中, 暂不可用...</p>
-
-					</details>
-
+		<header>
+			<label for="sidebar-toggle" class="menu-btn">☰</label>
+			<h1>[pChat.IpacEL.cc] (｡・̀ᴗ-)✧</h1>
+			<div class="header-controls">
+				<div class="model-select-wrapper">
+					<select id="model-select"></select>
 				</div>
-				<div class="msg-footer"></div>
+				<div id="status-dot" class="status-dot"></div>
 			</div>
+		</header>
+
+		<div id="chat-container">
+			<aside id="sidebar">
+				<div class="sidebar-header">
+					<button id="new-chat-btn">[ + NEW SESSION ]</button>
+				</div>
+				<div id="history-list"></div>
+				<div class="sidebar-footer">
+					<button id="config-btn" style="flex: 0.4;">CONFIG</button>
+					<button id="pip-window-btn">PIP</button>
+				</div>
+			</aside>
+
+			<main id="right-panel">
+				<div id="message-area" class="message-area"></div>
+				<div id="input-container">
+					<div class="input-group">
+						<textarea id="user-input" placeholder=" > Start typing a prompt" autofocus></textarea>
+						<button id="send-btn">SEND</button>
+					</div>
+				</div>
+				
+				<!-- config -->
+				<div id="config" class="message-area config" style="display: none;">
+					<div class="message system">
+						<span class="role-label"><span>CONFIG</span></span>
+						<div class="content markdown-body">
+
+							<h2>导入 / 导出</h2>
+							<p>在这里导入导出所有会话:
+								<button id="import-btn">[IMPORT]</button>
+								<button id="export-btn">[EXPORT]</button>
+								<input type="file" id="import-input" accept=".json" style="display: none;">
+							</p>
+
+							<h2>模型服务</h2>
+
+							<details class="think model-service" data-service="Puter.js" open><summary>Puter.js</summary>
+
+								<h2>优先显示模型</h2>
+
+								<table class="input-config-table">
+									<tr>
+										<td>优先匹配模型列表:</td>
+										<td><input id="puterPriorityModelsInput" type="text" placeholder="qwen3-max, gemini-3-pro, deepseek-v3.2-exp" value=""></td>
+									</tr>
+								</table>
+
+								<h2>重置 puter.js</h2>
+								<p>删除 puter.js 相关的数据 (不会删除聊天记录):
+									<button id="reset-puter-data">[RESET]</button>
+								</p>
+								<p>可能还需要前往 <a href="https://puter.com/" target="_blank">https://puter.com/</a> 删除所有 Cookie 来刷新账户.</p>
+
+							</details>
+
+							<details class="think model-service" data-service="OpenAI-API"><summary>OpenAI API</summary>
+
+								<h2>API 配置</h2>
+
+								<table class="input-config-table">
+									<tr>
+										<td>API 端点:</td>
+										<td><input type="text" placeholder="https://api.openai.com/v1/completions" value="https://api.openai.com/v1/completions"></td>
+									</tr>
+									<tr>
+										<td>API 密钥:</td>
+										<td><input type="text" placeholder="sk-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"></td>
+									</tr>
+									<tr>
+										<td>优先匹配模型列表:</td>
+										<td><input type="text" placeholder="qwen3-max, gemini-3-pro, deepseek-v3.2-exp"></td>
+									</tr>
+								</table>
+
+								<p>此功能正在开发中, 暂不可用...</p>
+
+							</details>
+
+						</div>
+						<div class="msg-footer"></div>
+					</div>
+				</div>
+			</main>
+
+			<aside id="minimap"></aside>
 		</div>
-    </main>
 
-	<aside id="minimap"></aside>
-</div>
-
-<script src="https://js.puter.com/v2/"></script>
-<script type="module" src="./ui.js?v=1.0.0"></script>
-<script defer src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "2d8253ba1aa34bf29e0a76988fb62ed1"}'></script>
-</body>
+		<script src="https://js.puter.com/v2/"></script>
+		<script type="module" src="./ui.js?v=1.0.0"></script>
+		<script defer src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "2d8253ba1aa34bf29e0a76988fb62ed1"}'></script>
+	</body>
 </html>
