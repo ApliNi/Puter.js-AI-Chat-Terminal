@@ -336,138 +336,142 @@ window.addEventListener('DOMContentLoaded', async () => {
 		}
 	}
 
-	// --- UI Logic: Sidebar ---
 	function renderSidebar(onlyHighlight = false) {
-
-		// 仅切换时不重新渲染
-		if(onlyHighlight){
-			historyList.querySelector('.history-item.active')?.classList?.remove('active');
-			document.getElementById(`history_${currentSessionId}`)?.classList?.add('active');
+		if (onlyHighlight) {
+			for(const el of historyList.querySelectorAll('.history-item.active')){
+				el.classList.remove('active');
+			}
+			historyList.querySelector(`[data-session-id="${currentSessionId}"]`)?.classList?.add('active');
 			return;
 		}
 
-		historyList.innerHTML = '';
 		const sortedSessions = [...sessions].sort((a, b) => b.timestamp - a.timestamp);
-
-		sortedSessions.forEach(session => {
-			const div = document.createElement('div');
-			div.id = `history_${session.id}`;
-			div.className = `history-item ${session.id === currentSessionId ? 'active' : ''}`;
-			
-			// 点击切换会话
-			div.onclick = (e) => {
-				// 关键检查：如果当前正在编辑标题，或者是通过长按触发的编辑状态，则不切换会话
-				if (e.target.isContentEditable) return;
-				
-				switchSession(session.id);
-				// 移动端点击后收起侧边栏
-				if (window.innerWidth <= 768) {
-					sidebarToggle.checked = false;
-				}
-			};
-			
-			div.innerHTML = `
+		const newHtml = sortedSessions.map(session => `
+			<div class="history-item ${session.id === currentSessionId ? 'active' : ''}" data-session-id="${session.id}">
 				<div class="history-info">
-					<div class="history-title" title="Double click to rename"></div>
+					<div class="history-title" title="Double click to rename">${session.title || 'New Session'}</div>
 					<div class="history-date">${formatDate(session.timestamp)}</div>
 				</div>
 				<button class="history-del-btn">×</button>
-			`;
-
-			div.querySelector('.history-title').innerText = session.title || 'New Session';
-
-			// 删除按钮逻辑
-			const delBtn = div.querySelector('.history-del-btn');
-			delBtn.onclick = (e) => deleteSession(e, session.id);
-
-			// --- 标题编辑逻辑 (双击 + 长按) ---
-			const titleDiv = div.querySelector('.history-title');
-
-			// 1. PC端：双击重命名
-			titleDiv.ondblclick = (e) => {
-				e.stopPropagation();
-				makeTitleEditable(titleDiv, session.id);
-			};
-
-			// 2. 移动端：长按重命名
-			let pressTimer;
-			let longPressDuration = 500; // 长按 500ms 触发
-
-			const touchstartFunc = (e) => {
-				// 启动定时器
-				pressTimer = setTimeout(() => {
-					// 触发震动反馈 (如果设备支持)
-					if (navigator.vibrate) navigator.vibrate(50);
-					
-					// 进入编辑模式
-					makeTitleEditable(titleDiv, session.id);
-					
-					// 阻止默认菜单 (防止长按弹出浏览器菜单)
-					e.preventDefault();
-				}, longPressDuration);
-			};
-			const clearTimeoutFunc = () => {
-				if (pressTimer) clearTimeout(pressTimer);
-			};
-
-			// 移动端按下
-			titleDiv.addEventListener('touchstart', (e) => {
-				longPressDuration = 500;
-				touchstartFunc(e);
-			}, { passive: false });
-
-			// 鼠标按下
-			titleDiv.addEventListener('mousedown', (e) => {
-				longPressDuration = 300; // 鼠标点击响应更快
-				touchstartFunc(e);
-			}, { passive: false });
-
-			// 抬起
-			titleDiv.addEventListener('touchend', clearTimeoutFunc);
-			titleDiv.addEventListener('mouseup', clearTimeoutFunc);
-			// 移动
-			titleDiv.addEventListener('touchmove', clearTimeoutFunc);
-			
-			// 防止长按默认弹出的上下文菜单干扰
-			titleDiv.addEventListener('contextmenu', (e) => {
-				if (pressTimer) e.preventDefault();
-			});
-
-			historyList.appendChild(div);
-		});
+			</div>
+		`);
+		historyList.innerHTML = newHtml.join('');
 	}
 
-	function makeTitleEditable(element, sessionId) {
-		element.contentEditable = 'plaintext-only';
-		element.style.textOverflow = 'clip';
-		element.focus();
-		
-		// Select all text
-		const range = document.createRange();
-		range.selectNodeContents(element);
-		const sel = window.getSelection();
-		sel.removeAllRanges();
-		sel.addRange(range);
+	// --- 点击事件委托 ---
+	if(true){
 
-		const save = async () => {
-			element.contentEditable = false;
-			const oldTitle = element.innerText.trim() || 'Untitled Session';
-			const newTitle = (element.innerText.replace(/\s+/g, ' ').trim() || oldTitle).substring(0, 47);
-			element.innerText = newTitle;
-			element.scrollLeft = 0;
-			element.style.textOverflow = 'ellipsis';
-			await renameSession(null, sessionId, newTitle);
+		const makeTitleEditable = (element, sessionId) => {
+			element.contentEditable = 'plaintext-only';
+			element.style.textOverflow = 'clip';
+			element.focus();
+			
+			// Select all text
+			const range = document.createRange();
+			range.selectNodeContents(element);
+			const sel = window.getSelection();
+			sel.removeAllRanges();
+			sel.addRange(range);
+
+			const save = async () => {
+				element.contentEditable = false;
+				const oldTitle = element.innerText.trim() || 'Untitled Session';
+				const newTitle = (element.innerText.replace(/\s+/g, ' ').trim() || oldTitle).substring(0, 47);
+				element.innerText = newTitle;
+				element.scrollLeft = 0;
+				element.style.textOverflow = 'ellipsis';
+				await renameSession(null, sessionId, newTitle);
+			};
+
+			const onKeyDown = (e) => {
+				if (e.key === 'Enter') {
+					e.preventDefault();
+					element.blur();
+				}
+			};
+
+			element.addEventListener('blur', save, { once: true });
+			element.addEventListener('keydown', onKeyDown);
+		}
+
+		let pressTimer; // 用于长按计时的全局变量
+
+		// --- 1. 点击事件委托 (切换 & 删除) ---
+		historyList.addEventListener('click', (e) => {
+			// 查找点击的是哪个会话项
+			const item = e.target.closest('.history-item');
+			if (!item) return;
+
+			const sessionId = item.dataset.sessionId;
+
+			// 如果点击的是删除按钮
+			if (e.target.classList.contains('history-del-btn')) {
+				deleteSession(e, sessionId);
+				return;
+			}
+
+			// 如果点击的是整个会话项 (且当前不在编辑状态)
+			if (!e.target.isContentEditable) {
+				switchSession(sessionId);
+				sidebarToggle.checked = false;
+			}
+		});
+
+		// --- 2. 双击事件委托 (PC端重命名) ---
+		historyList.addEventListener('dblclick', (e) => {
+			if (e.target.classList.contains('history-title')) {
+				const item = e.target.closest('.history-item');
+				if (item) {
+					makeTitleEditable(e.target, item.dataset.sessionId);
+				}
+			}
+		});
+
+		// --- 3. 长按逻辑处理函数 ---
+		const startPress = (e) => {
+			const titleDiv = e.target.closest('.history-title');
+			if (!titleDiv || titleDiv.isContentEditable) return;
+
+			// 区分鼠标和触摸的触发时长
+			const duration = e.type === 'mousedown' ? 300 : 500;
+
+			pressTimer = setTimeout(() => {
+				// 震动反馈
+				if (navigator.vibrate) navigator.vibrate(50);
+				
+				const item = titleDiv.closest('.history-item');
+				makeTitleEditable(titleDiv, item.dataset.sessionId);
+				
+				// 标记已触发长按，防止触发后续的 click 事件
+				pressTimer = null;
+			}, duration);
 		};
 
-		const onKeyDown = (e) => {
-			if (e.key === 'Enter') {
-				e.preventDefault();
-				element.blur();
+		const cancelPress = () => {
+			if (pressTimer) {
+				clearTimeout(pressTimer);
+				pressTimer = null;
 			}
 		};
 
-		element.addEventListener('blur', save, { once: true });
-		element.addEventListener('keydown', onKeyDown);
+		// --- 4. 绑定长按相关的事件委托 ---
+		// 移动端
+		historyList.addEventListener('touchstart', startPress, { passive: true });
+		historyList.addEventListener('touchend', cancelPress);
+		historyList.addEventListener('touchmove', cancelPress);
+		
+		// PC端 (模拟长按)
+		historyList.addEventListener('mousedown', startPress);
+		historyList.addEventListener('mouseup', cancelPress);
+		historyList.addEventListener('mouseleave', cancelPress);
+
+		// 屏蔽长按标题时的系统右键菜单
+		historyList.addEventListener('contextmenu', (e) => {
+			if (e.target.closest('.history-title')) {
+				// 如果正在编辑，或者刚才触发了长按，则阻止菜单
+				e.preventDefault();
+			}
+		});
 	}
 
 	async function switchSession(id) {
