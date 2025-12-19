@@ -595,6 +595,7 @@ window.addEventListener('DOMContentLoaded', async () => {
 		const newId = generateSessionId();
 		const sysMsg = {
 			role: 'system',
+			isRaw: false,
 			isCollapsed: true,
 			content: `
 ## Format
@@ -615,6 +616,8 @@ You are a helpful coding assistant. Answer concisely.
 		currentSessionId = newId;
 
 		cfg.setItem('lastSessionId', newId);
+
+		chatHistory = [sysMsg];
 		
 		await saveSessionMetaLocal(newSession);
 		await saveCurrentSession();
