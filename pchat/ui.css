@@ -309,6 +309,10 @@ h1 { font-size: 14px; font-weight: normal; letter-spacing: 1px; color: #fff; fon
 	margin: 0;
 	white-space: nowrap;
 }
+.content.collapsed ul,
+.content.collapsed ol {
+    padding-left: 0;
+}
 
 .msg-footer {
 	/* 视觉样式：背景、模糊、边框 */
