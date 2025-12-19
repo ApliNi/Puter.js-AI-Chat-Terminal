@@ -33,6 +33,9 @@
 	--font-stack: 'JetBrainsMono', 'HarmonyOS', 'Segoe UI Emoji', 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, Courier, monospace;
 }
 
+@keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: 0; } }
+@keyframes blink { 50% { opacity: 0; } }
+
 * { box-sizing: border-box; margin: 0; }
 
 body {
@@ -178,6 +181,7 @@ h1 { font-size: 14px; font-weight: normal; letter-spacing: 1px; color: #fff; fon
 	align-items: center;
 	transition: background 0.2s;
 	color: #888;
+	animation: fadeIn 0.3s ease;
 }
 
 .history-item:hover { background: #111; color: #ccc; }
@@ -237,12 +241,12 @@ h1 { font-size: 14px; font-weight: normal; letter-spacing: 1px; color: #fff; fon
 	margin: 0 auto;
 	padding: 10px 15px;
 	border-left: 2px solid transparent;
-	animation: fadeIn 0.3s ease;
 	position: relative;
 	display: flex;
 	flex-direction: column;
 	transition: all 0.2s;
 	content-visibility: auto;
+	animation: fadeIn 0.3s ease;
 }
 .message:last-child {
 	content-visibility: visible !important;
@@ -256,6 +260,17 @@ h1 { font-size: 14px; font-weight: normal; letter-spacing: 1px; color: #fff; fon
 .message.highlight {
 	/* background: rgba(255, 255, 255, 0.1); */
 	filter: brightness(150%);
+}
+
+/* 同样为不同角色的底部栏提供微调背景（可选，建议与 Header 保持一致） */
+.message.user .role-label, .message.user .msg-footer {
+	background: rgba(13, 20, 13, 0.95);
+}
+.message.assistant .role-label, .message.assistant .msg-footer {
+	background: rgba(20, 20, 20, 0.95);
+}
+.message.system .role-label, .message.system .msg-footer {
+	background: rgba(13, 20, 25, 0.95);
 }
 
 .role-label {
@@ -329,17 +344,6 @@ h1 { font-size: 14px; font-weight: normal; letter-spacing: 1px; color: #fff; fon
 	min-height: 32px;
 }
 
-/* 同样为不同角色的底部栏提供微调背景（可选，建议与 Header 保持一致） */
-.message.user .role-label, .message.user .msg-footer {
-	background: rgba(13, 20, 13, 0.95);
-}
-.message.assistant .role-label, .message.assistant .msg-footer {
-	background: rgba(20, 20, 20, 0.95);
-}
-.message.system .role-label, .message.system .msg-footer {
-	background: rgba(13, 20, 25, 0.95);
-}
-
 /* 修正：在吸附状态下，确保统计文字不会太暗 */
 .meta-stats {
 	font-size: 9px;
@@ -379,6 +383,7 @@ h1 { font-size: 14px; font-weight: normal; letter-spacing: 1px; color: #fff; fon
 	display: flex;
 	border: 1px solid var(--border-color);
 	position: sticky;
+	animation: fadeIn 0.3s ease;
 }
 .input-group::before {
 	content: "";
@@ -408,9 +413,7 @@ h1 { font-size: 14px; font-weight: normal; letter-spacing: 1px; color: #fff; fon
 #send-btn:hover { background: rgba(255, 255, 255, 0.05); color: #fff; }
 #send-btn:disabled { background: #111; color: #444; cursor: not-allowed; }
 
-@keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: 0; } }
 .cursor::after { content: '█'; animation: blink 1s step-end infinite; margin-left: 2px; color: var(--ai-msg-color); }
-@keyframes blink { 50% { opacity: 0; } }
 
 /* --- Minimap (Right Sidebar) --- */
 #minimap {
@@ -444,6 +447,7 @@ h1 { font-size: 14px; font-weight: normal; letter-spacing: 1px; color: #fff; fon
 	transition: all 0.2s;
 	position: relative;
 	pointer-events: all;
+	animation: fadeIn 0.3s ease;
 }
 
 .minimap-item:hover {
@@ -451,7 +455,7 @@ h1 { font-size: 14px; font-weight: normal; letter-spacing: 1px; color: #fff; fon
 }
 
 .minimap-item.collapsed {
-	opacity: 0.35;
+	opacity: 0.35 !important;
 }
 
 /* 颜色映射，与主界面一致 */

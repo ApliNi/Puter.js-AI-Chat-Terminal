@@ -316,6 +316,7 @@ window.addEventListener('DOMContentLoaded', async () => {
 				sessions.sort((a, b) => b.timestamp - a.timestamp);
 				
 				// 切换到第一个(最新的)会话
+				renderSidebar();
 				await switchSession(sessions[0].id);
 			} else {
 				// 如果没有剩余会话，才新建
@@ -336,12 +337,21 @@ window.addEventListener('DOMContentLoaded', async () => {
 	}
 
 	// --- UI Logic: Sidebar ---
-	function renderSidebar() {
+	function renderSidebar(onlyHighlight = false) {
+
+		// 仅切换时不重新渲染
+		if(onlyHighlight){
+			historyList.querySelector('.history-item.active')?.classList?.remove('active');
+			document.getElementById(`history_${currentSessionId}`)?.classList?.add('active');
+			return;
+		}
+
 		historyList.innerHTML = '';
 		const sortedSessions = [...sessions].sort((a, b) => b.timestamp - a.timestamp);
 
 		sortedSessions.forEach(session => {
 			const div = document.createElement('div');
+			div.id = `history_${session.id}`;
 			div.className = `history-item ${session.id === currentSessionId ? 'active' : ''}`;
 			
 			// 点击切换会话
@@ -487,7 +497,7 @@ window.addEventListener('DOMContentLoaded', async () => {
 			els.contentDiv.classList.remove('cursor');
 		}
 		
-		renderSidebar();
+		renderSidebar(true);
 
 		// 欢迎会话不滚动到底部
 		if(id !== 'sess_welcome'){
