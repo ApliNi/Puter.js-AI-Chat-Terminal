@@ -1,5 +1,11 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
+	<script>
+		// 移动端禁用缩放动画
+		if(navigator.userAgentData.mobile){
+			document.querySelector('html').style.animation = 'none';
+		}
+	</script>
 	<head>
 		<meta charset="UTF-8">
 		<meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -11,7 +17,7 @@
 		<link rel="icon" href="./favicon.ico">
 		<link rel="manifest" href="./manifest.json?v=1">
 	</head>
-	<body style="display: none;">
+	<body>
 
 		<input type="checkbox" id="sidebar-toggle" style="display: none;">
 
