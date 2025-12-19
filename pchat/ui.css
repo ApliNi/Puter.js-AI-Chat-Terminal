@@ -42,9 +42,6 @@
 
 html {
 	background-color: var(--bg-color);
-	transform-origin: 50% 50%;
-	animation: enterScale 0.6s ease;
-	overflow: hidden;
 }
 
 body {
@@ -62,7 +59,12 @@ body {
 	font-size: 13px;
 	overflow: hidden;
 	tab-size: 4;
+	transform-origin: 50% 50%;
+	animation: enterScale 0.6s ease;
+}
+body > * {
 	animation: enterOpacity 1.6s ease;
+
 }
 
 /* --- Global Header --- */
