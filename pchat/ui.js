@@ -75,6 +75,7 @@ window.addEventListener('DOMContentLoaded', async () => {
 
 				request.onerror = (e) => {
 					console.error('IndexedDB Error:', e);
+					alert('加载数据库时出现错误');
 					reject(e);
 				};
 			});
