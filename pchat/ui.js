@@ -51,7 +51,7 @@ import morphdom from 'https://cdn.jsdelivr.net/npm/morphdom@2.7.7/+esm';
 		version: 1,
 		db: null,
 
-		init() {
+		async init() {
 			return new Promise((resolve, reject) => {
 				const request = indexedDB.open(this.dbName, this.version);
 
@@ -197,10 +197,8 @@ import morphdom from 'https://cdn.jsdelivr.net/npm/morphdom@2.7.7/+esm';
 	let cfg = {
 		puter_priorityModels: ['qwen3-max', 'gemini-3-pro', 'gemini-2.5', 'deepseek-v3.2-exp', 'claude-sonnet-4-5', 'gpt-4.1'],
 		lastSessionId: null,
-		
-		...await IDBManager.getConfig(),
-		setItem: (...args) => IDBManager.setConfig(...args),
 	};
+	cfg = { ...cfg, ...await IDBManager.getConfig(), setItem: (...args) => IDBManager.setConfig(...args) };
 
 	// --- DOM Elements ---
 	const sidebarToggle = document.getElementById('sidebar-toggle');
