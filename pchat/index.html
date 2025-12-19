@@ -1003,6 +1003,7 @@
     };
 
     // --- DOM Elements ---
+	const sidebarToggle = document.getElementById('sidebar-toggle');
 	const rightPanel = document.getElementById('right-panel');
     const messageArea = document.getElementById('message-area');
     const userInput = document.getElementById('user-input');
@@ -1153,7 +1154,7 @@
                 switchSession(session.id);
                 // 移动端点击后收起侧边栏
                 if (window.innerWidth <= 768) {
-                    document.getElementById('sidebar-toggle').checked = false;
+                    sidebarToggle.checked = false;
                 }
             };
             
@@ -1527,7 +1528,7 @@ You are a helpful coding assistant. Answer concisely.
 
     newChatBtn.addEventListener('click', () => {
 		createNewSession();
-		document.getElementById('sidebar-toggle').checked = false;
+		sidebarToggle.checked = false;
 	});
 
     // --- Chat Logic ---
@@ -2069,19 +2070,28 @@ You are a helpful coding assistant. Answer concisely.
 				e.style.display = 'none';
 			}
 			minimap.style.display = 'none';
+			newChatBtn.style.pointerEvents = 'none';
+			historyList.style.pointerEvents = 'none';
 			rightPanel.querySelector('& > .config').style.display = '';
 		}else{
 			for(const e of rightPanel.querySelectorAll('& > *')){
 				e.style.display = '';
 			}
 			minimap.style.display = '';
+			newChatBtn.style.pointerEvents = '';
+			historyList.style.pointerEvents = '';
 			rightPanel.querySelector('& > .config').style.display = 'none';
 		}
+		sidebarToggle.checked = false;
 	});
 
 	// 导出功能
     exportBtn.addEventListener('click', async () => {
-        if (isProcessing) return;
+		 // 二次确认
+        if (!confirm('确认: 将导出所有聊天记录为一个 JSON 文件')) {
+            return;
+        }
+
         const originalText = exportBtn.innerText;
         exportBtn.innerText += '...';
 
@@ -2119,7 +2129,6 @@ You are a helpful coding assistant. Answer concisely.
 
     // 导入按钮点击
     importBtn.addEventListener('click', () => {
-        if (isProcessing) return;
         importInput.click();
     });
 
