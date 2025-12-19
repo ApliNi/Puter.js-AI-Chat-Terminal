@@ -13,7 +13,7 @@
 
 @font-face {
 	font-family: 'Ubuntu';
-	src: url('./res/Ubuntu-Regular.subset.woff2?v=2') format('woff2'),
+	src: url('./res/Ubuntu-Regular.subset.woff2') format('woff2'),
 		local('JetBrainsMono');
 	word-spacing: -5px; /*等宽空格间距太大*/
 	font-display: swap;
