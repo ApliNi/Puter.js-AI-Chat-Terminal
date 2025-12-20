@@ -47,10 +47,10 @@ window.addEventListener('DOMContentLoaded', async () => {
 	// --- Worker ---
 	const worker = {
 		worker: null,
-
 		idx: 1,
 		resolveQueue: {},
-		send: (type, data) => new Promise((resolve, reject) => {
+
+		run: (type, data) => new Promise((resolve, reject) => {
 			const id = worker.idx++;
 			worker.resolveQueue[id] = resolve;
 			worker.worker.postMessage({ type, data, id });
@@ -187,7 +187,6 @@ window.addEventListener('DOMContentLoaded', async () => {
 		},
 
 		setConfig(id, value) {
-			cfg[id] = value;
 			return new Promise(async (resolve, reject) => {
 				const tx = this.db.transaction('config', 'readwrite');
 				const store = tx.objectStore('config');
@@ -236,7 +235,10 @@ window.addEventListener('DOMContentLoaded', async () => {
 		openaiPriorityModels: [],
 
 		...await IDBManager.getConfig(),
-		setItem: (...args) => IDBManager.setConfig(...args),
+		setItem: (id, value) => {
+			cfg[id] = value;
+			return IDBManager.setConfig(id, value);
+		},
 	};
 
 	// --- DOM Elements ---
@@ -255,7 +257,6 @@ window.addEventListener('DOMContentLoaded', async () => {
 	// --- State Management ---
 	let chatHistory = [];
 	let isProcessing = false;
-	let currentSessionId = null;
 	let sessions = [];
 	let isAutoScroll = true;
 	let interacted = false;
@@ -263,16 +264,6 @@ window.addEventListener('DOMContentLoaded', async () => {
 	// --- Utilities ---
 	const generateId = () => 'msg_' + Date.now() + '_' + Math.floor(Math.random() * 10000);
 	const generateSessionId = () => 'sess_' + Date.now();
-
-	const formatDate = (ts) => {
-		const d = new Date(ts);
-		const year = d.getFullYear();
-		const month = (d.getMonth() + 1).toString().padStart(2, '0');
-		const day = d.getDate().toString().padStart(2, '0');
-		const hour = d.getHours().toString().padStart(2, '0');
-		const minute = d.getMinutes().toString().padStart(2, '0');
-		return `${year}/${month}/${day} ${hour}:${minute}`;
-	};
 
 	// --- Minimap Functions ---
 
@@ -336,8 +327,8 @@ window.addEventListener('DOMContentLoaded', async () => {
 	}
 
 	async function saveCurrentSession() {
-		if (!currentSessionId) return;
-		await IDBManager.saveSessionMessages(currentSessionId, chatHistory);
+		if (!cfg.lastSessionId) return;
+		await IDBManager.saveSessionMessages(cfg.lastSessionId, chatHistory);
 	}
 
 	async function deleteSession(e, sessionId) {
@@ -349,7 +340,7 @@ window.addEventListener('DOMContentLoaded', async () => {
 		await IDBManager.deleteSession(sessionId);
 
 		// 2. 判断删除的是否是当前正在查看的会话
-		if (sessionId === currentSessionId) {
+		if (sessionId === cfg.lastSessionId) {
 			if (sessions.length > 0) {
 				// 如果还有剩余会话，按时间排序找到最新的一个
 				// (这一步是为了和侧边栏显示的顺序保持一致)
@@ -376,26 +367,17 @@ window.addEventListener('DOMContentLoaded', async () => {
 		}
 	}
 
-	function renderSidebar(onlyHighlight = false) {
+	async function renderSidebar(onlyHighlight = false) {
 		if (onlyHighlight) {
 			for(const el of historyList.querySelectorAll('.history-item.active')){
 				el.classList.remove('active');
 			}
-			historyList.querySelector(`[data-session-id="${currentSessionId}"]`)?.classList?.add('active');
+			historyList.querySelector(`[data-session-id="${cfg.lastSessionId}"]`)?.classList?.add('active');
 			return;
 		}
-
-		const sortedSessions = [...sessions].sort((a, b) => b.timestamp - a.timestamp);
-		const newHtml = sortedSessions.map(session => `
-			<div class="history-item ${session.id === currentSessionId ? 'active' : ''}" data-session-id="${session.id}">
-				<div class="history-info">
-					<div class="history-title" title="Double click to rename">${session.title || 'New Session'}</div>
-					<div class="history-date">${formatDate(session.timestamp)}</div>
-				</div>
-				<button class="history-del-btn">×</button>
-			</div>
-		`);
-		historyList.innerHTML = newHtml.join('');
+		
+		const html = await worker.run('renderSidebar', { sessions: [...sessions], lastSessionId: cfg.lastSessionId });
+		historyList.innerHTML = html;
 	}
 
 	// --- 点击事件委托 ---
@@ -516,11 +498,10 @@ window.addEventListener('DOMContentLoaded', async () => {
 
 	async function switchSession(id) {
 		if (isProcessing) return;
-		if (currentSessionId === id && messageArea.innerHTML !== '') return;
+		if (cfg.lastSessionId === id && messageArea.innerHTML !== '') return;
 
 		cfg.setItem('lastSessionId', id);
 
-		currentSessionId = id;
 		const session = sessions.find(s => s.id === id);
 		if (session) {
 			updateTitle(session.title);
@@ -673,8 +654,6 @@ You are a helpful coding assistant. Answer concisely.
 			timestamp: Date.now(),
 		};
 
-		currentSessionId = newId;
-
 		cfg.setItem('lastSessionId', newId);
 
 		chatHistory = [sysMsg];
@@ -695,12 +674,12 @@ You are a helpful coding assistant. Answer concisely.
 	}
 
 	async function updateSessionTitleIfNeeded(userText) {
-		const session = sessions.find(s => s.id === currentSessionId);
+		const session = sessions.find(s => s.id === cfg.lastSessionId);
 		if (session && session.title === '') {
 			session.title = userText.trim().substring(0, 47).replace(/\s+/g, ' ');
 			await saveSessionMetaLocal(session, false);
 			updateTitle(session.title);
-			historyList.querySelector(`[data-session-id="${currentSessionId}"] .history-title`).innerText = session.title;
+			historyList.querySelector(`[data-session-id="${cfg.lastSessionId}"] .history-title`).innerText = session.title;
 		}
 	}
 
@@ -983,7 +962,7 @@ You are a helpful coding assistant. Answer concisely.
 					isRendering += 1;
 
 					// 渲染新内容
-					const newHtmlContent = DOMPurify.sanitize(await worker.send('renderMarkdown', fullText), DOMPurifyConfig);
+					const newHtmlContent = DOMPurify.sanitize(await worker.run('renderMarkdown', fullText), DOMPurifyConfig);
 					// const newHtmlContent = DOMPurify.sanitize(marked.parse(fullText), DOMPurifyConfig);
 					morphdom(uiElements.contentDiv, `<div>${newHtmlContent}</div>`, {
 						childrenOnly: true,
@@ -1145,7 +1124,7 @@ You are a helpful coding assistant. Answer concisely.
 			} else {
 				// 立即渲染未折叠的消息
 				if (content) {
-					worker.send('renderMarkdown', content).then((html) => {
+					worker.run('renderMarkdown', content).then((html) => {
 						contentArea.innerHTML = DOMPurify.sanitize(html, DOMPurifyConfig);
 					});
 					// contentArea.innerHTML = DOMPurify.sanitize(marked.parse(content), DOMPurifyConfig);
@@ -1260,7 +1239,7 @@ You are a helpful coding assistant. Answer concisely.
 				updateHistoryContent(id, currentRawText);
 			}
 			// 3. 渲染 Markdown
-			contentDiv.innerHTML = DOMPurify.sanitize(await worker.send('renderMarkdown', currentRawText), DOMPurifyConfig);
+			contentDiv.innerHTML = DOMPurify.sanitize(await worker.run('renderMarkdown', currentRawText), DOMPurifyConfig);
 			// contentDiv.innerHTML = DOMPurify.sanitize(marked.parse(currentRawText), DOMPurifyConfig);
 			// 4. 禁止编辑 (渲染后的 HTML 不适合直接编辑)
 			contentDiv.contentEditable = 'false';
@@ -1293,7 +1272,7 @@ You are a helpful coding assistant. Answer concisely.
 		if (!msgItem.isCollapsed && !msgItem.isRaw && contentDiv.dataset.lazy === 'true') {
 			// 从内存或 dom 中得到消息原始内容
 			const rawText = msgItem ? msgItem.content : contentDiv.textContent;
-			contentDiv.innerHTML = DOMPurify.sanitize(await worker.send('renderMarkdown', rawText), DOMPurifyConfig);
+			contentDiv.innerHTML = DOMPurify.sanitize(await worker.run('renderMarkdown', rawText), DOMPurifyConfig);
 			// contentDiv.innerHTML = DOMPurify.sanitize(marked.parse(rawText), DOMPurifyConfig);
 			contentDiv.dataset.lazy = 'false';
 		}
@@ -1403,7 +1382,7 @@ You are a helpful coding assistant. Answer concisely.
 		const newSessionId = generateSessionId();
 		
 		// 获取原标题，如果没有则叫 New Session
-		const currentTitle = sessions.find(s => s.id === currentSessionId)?.title || 'New Session';
+		const currentTitle = sessions.find(s => s.id === cfg.lastSessionId)?.title || 'New Session';
 		let newTitle;
 		if(currentTitle.startsWith('[Fork')){
 			// 使用数值叠加 Fork 次数

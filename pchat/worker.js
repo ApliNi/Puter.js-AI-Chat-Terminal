@@ -25,6 +25,20 @@ import markedKatex from 'https://cdn.jsdelivr.net/npm/marked-katex-extension@5.1
 
 	marked.use(markedKatex({ throwOnError: false, nonStandard: true }));
 
+	// --- function ---
+
+	const formatDate = (ts) => {
+		const d = new Date(ts);
+		const year = d.getFullYear();
+		const month = (d.getMonth() + 1).toString().padStart(2, '0');
+		const day = d.getDate().toString().padStart(2, '0');
+		const hour = d.getHours().toString().padStart(2, '0');
+		const minute = d.getMinutes().toString().padStart(2, '0');
+		return `${year}/${month}/${day} ${hour}:${minute}`;
+	};
+
+	// --- main ---
+
 	self.addEventListener('message', (event) => {
 		// 主线程发送的数据通过 event.data 访问
 		const { type, data, id } = event.data;
@@ -37,6 +51,22 @@ import markedKatex from 'https://cdn.jsdelivr.net/npm/marked-katex-extension@5.1
 		if (type === 'renderMarkdown') {
 			const html = marked.parse(data);
 			send(html);
+		}
+
+		else if(type === 'renderSidebar') {
+			const { sessions, lastSessionId } = data;
+
+			const sortedSessions = sessions.sort((a, b) => b.timestamp - a.timestamp);
+			const newHtml = sortedSessions.map(session => `
+				<div class="history-item ${session.id === lastSessionId ? 'active' : ''}" data-session-id="${session.id}">
+					<div class="history-info">
+						<div class="history-title" title="Double click to rename">${session.title || 'New Session'}</div>
+						<div class="history-date">${formatDate(session.timestamp)}</div>
+					</div>
+					<button class="history-del-btn">&times;</button>
+				</div>
+			`);
+			send(newHtml.join(''));
 		}
 		
 	});
