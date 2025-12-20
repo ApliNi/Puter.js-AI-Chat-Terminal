@@ -7,36 +7,13 @@ console.log(String.raw`%c
 `, 'color: #008fff', 'color: #17d9ff', 'color: #008fff');
 
 if ('serviceWorker' in navigator) {
-	navigator.serviceWorker.register('/sw.js', { scope: '/' });
+	navigator.serviceWorker.register('./sw.js', { scope: '/' });
 }
 
 import DOMPurify from 'https://cdn.jsdelivr.net/npm/dompurify@3.3.1/+esm';
-import hljs from 'https://cdn.jsdelivr.net/npm/highlight.js@11.11.1/+esm';
-import Katex from 'https://cdn.jsdelivr.net/npm/katex@0.16.27/+esm';
-import { Marked } from 'https://cdn.jsdelivr.net/npm/marked@17.0.1/+esm';
-import { markedHighlight } from 'https://cdn.jsdelivr.net/npm/marked-highlight@2.2.3/+esm';
-import markedKatex from 'https://cdn.jsdelivr.net/npm/marked-katex-extension@5.1.6/+esm';
 import morphdom from 'https://cdn.jsdelivr.net/npm/morphdom@2.7.7/+esm';
 
 window.addEventListener('DOMContentLoaded', async () => {
-
-	const marked = new Marked(
-		markedHighlight({
-			emptyLangClass: 'hljs',
-			langPrefix: 'hljs language-',
-			highlight(code, lang, info) {
-				const language = hljs.getLanguage(lang) ? lang : 'plaintext';
-				return hljs.highlight(code, { language }).value;
-			}
-		})
-	);
-
-	marked.setOptions({
-		breaks: true,
-		gfm: true,
-	});
-
-	marked.use(markedKatex({ throwOnError: false, nonStandard: true }));
 
 	const DOMPurifyConfig = {
 		IN_PLACE: true,
@@ -66,6 +43,32 @@ window.addEventListener('DOMContentLoaded', async () => {
 			node.classList.add('no-edit');
 		}
 	});
+	
+	// --- Worker ---
+	const worker = {
+		worker: null,
+
+		idx: 1,
+		resolveQueue: {},
+		send: (type, data) => new Promise((resolve, reject) => {
+			const id = worker.idx++;
+			worker.resolveQueue[id] = resolve;
+			worker.worker.postMessage({ type, data, id });
+		}),
+
+		init: () => new Promise((resolve, reject) => {
+			worker.worker = new Worker('./worker.js', { type: 'module' });
+
+			worker.worker.onmessage = (event) => {
+				const { type, data, id } = event.data;
+				const cb = worker.resolveQueue[id];
+				if(cb) cb(data);
+				delete worker.resolveQueue[id];
+
+				if(type === 'init') resolve();
+			};
+		}),
+	};
 
 	// --- IndexedDB Manager ---
 	const IDBManager = {
@@ -216,7 +219,12 @@ window.addEventListener('DOMContentLoaded', async () => {
 			});
 		},
 	};
-	await IDBManager.init();
+	
+	// 并行初始化
+	await Promise.all([ worker.init(), IDBManager.init() ]).catch((err) => {
+		console.log('初始化失败:', err);
+		alert('初始化失败, 请尝试刷新页面');
+	});
 
 	let cfg = {
 		lastSessionId: null,
@@ -975,7 +983,8 @@ You are a helpful coding assistant. Answer concisely.
 					isRendering += 1;
 
 					// 渲染新内容
-					const newHtmlContent = DOMPurify.sanitize(marked.parse(fullText), DOMPurifyConfig);
+					const newHtmlContent = DOMPurify.sanitize(await worker.send('renderMarkdown', fullText), DOMPurifyConfig);
+					// const newHtmlContent = DOMPurify.sanitize(marked.parse(fullText), DOMPurifyConfig);
 					morphdom(uiElements.contentDiv, `<div>${newHtmlContent}</div>`, {
 						childrenOnly: true,
 						onBeforeElUpdated: (from, to) => {
@@ -1136,7 +1145,10 @@ You are a helpful coding assistant. Answer concisely.
 			} else {
 				// 立即渲染未折叠的消息
 				if (content) {
-					contentArea.innerHTML = DOMPurify.sanitize(marked.parse(content), DOMPurifyConfig);
+					worker.send('renderMarkdown', content).then((html) => {
+						contentArea.innerHTML = DOMPurify.sanitize(html, DOMPurifyConfig);
+					});
+					// contentArea.innerHTML = DOMPurify.sanitize(marked.parse(content), DOMPurifyConfig);
 				}
 			}
 		} else {
@@ -1248,7 +1260,8 @@ You are a helpful coding assistant. Answer concisely.
 				updateHistoryContent(id, currentRawText);
 			}
 			// 3. 渲染 Markdown
-			contentDiv.innerHTML = DOMPurify.sanitize(marked.parse(currentRawText), DOMPurifyConfig);
+			contentDiv.innerHTML = DOMPurify.sanitize(await worker.send('renderMarkdown', currentRawText), DOMPurifyConfig);
+			// contentDiv.innerHTML = DOMPurify.sanitize(marked.parse(currentRawText), DOMPurifyConfig);
 			// 4. 禁止编辑 (渲染后的 HTML 不适合直接编辑)
 			contentDiv.contentEditable = 'false';
 			contentDiv.classList.remove('editable');
@@ -1280,7 +1293,8 @@ You are a helpful coding assistant. Answer concisely.
 		if (!msgItem.isCollapsed && !msgItem.isRaw && contentDiv.dataset.lazy === 'true') {
 			// 从内存或 dom 中得到消息原始内容
 			const rawText = msgItem ? msgItem.content : contentDiv.textContent;
-			contentDiv.innerHTML = DOMPurify.sanitize(marked.parse(rawText), DOMPurifyConfig);
+			contentDiv.innerHTML = DOMPurify.sanitize(await worker.send('renderMarkdown', rawText), DOMPurifyConfig);
+			// contentDiv.innerHTML = DOMPurify.sanitize(marked.parse(rawText), DOMPurifyConfig);
 			contentDiv.dataset.lazy = 'false';
 		}
 

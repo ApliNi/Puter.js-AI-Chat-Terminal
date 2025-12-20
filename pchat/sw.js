@@ -17,7 +17,7 @@ self.addEventListener('fetch', (event) => {
 	if(!event.request.url.startsWith('http')) return;
 
 	// 绕过非资源文件请求
-	const cacheDest = [ 'document', 'style', 'script', 'font', 'image', 'manifest' ];
+	const cacheDest = [ 'document', 'style', 'script', 'worker', 'font', 'image', 'manifest' ];
 	if(!cacheDest.includes(event.request.destination)) return;
 
 	event.respondWith((async () => {
