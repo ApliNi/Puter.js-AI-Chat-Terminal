@@ -802,7 +802,7 @@ You are a helpful coding assistant. Answer concisely.
 				const priorityList = cfg.modelService === 'Puter.js' ? cfg.puterPriorityModels : cfg.openaiPriorityModels;
 				for(const model of models){
 					if (priorityList.some(pid => model.id.includes(pid))) {
-						createOption(m);
+						createOption(model);
 					}
 				}
 
