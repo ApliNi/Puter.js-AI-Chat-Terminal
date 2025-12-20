@@ -220,7 +220,7 @@ window.addEventListener('DOMContentLoaded', async () => {
 		modelService: 'Puter.js',
 		puterPriorityModels: ['qwen3-max', 'gemini-3-pro', 'gemini-2.5', 'deepseek-v3.2-exp', 'claude-sonnet-4-5', 'gpt-4.1'],
 		openaiApiEndpoint: '',
-		openaiApiKey: '',
+		openaiApiKey: [],
 		openaiPriorityModels: [],
 
 		...await IDBManager.getConfig(),
@@ -737,6 +737,18 @@ You are a helpful coding assistant. Answer concisely.
 			}
 		},
 
+		// 负载均衡选择一个 API
+		__getOpenAiApiIdx: -1,
+		getOpenAiKey() {
+			if(typeof cfg.openaiApiKey === 'string') cfg.openaiApiKey = [ cfg.openaiApiKey ]; // 兼容旧版本数据
+			const length = cfg.openaiApiKey.length;
+			if(AIService.__getOpenAiApiIdx === -1){
+				AIService.__getOpenAiApiIdx = Math.floor(Math.random() * length);
+			}
+			AIService.__getOpenAiApiIdx = (AIService.__getOpenAiApiIdx + 1) % length;
+			return cfg.openaiApiKey[AIService.__getOpenAiApiIdx];
+		},
+
 		// 获取模型列表
 		async loadModels() {
 			try {
@@ -767,7 +779,7 @@ You are a helpful coding assistant. Answer concisely.
 						method: 'GET',
 						headers: {
 							'Content-Type': 'application/json',
-							'Authorization': `Bearer ${cfg.openaiApiKey}`
+							'Authorization': `Bearer ${AIService.getOpenAiKey()}`
 						},
 					});
 					const data = await resp.json();
@@ -838,7 +850,7 @@ You are a helpful coding assistant. Answer concisely.
 					method: 'POST',
 					headers: {
 						'Content-Type': 'application/json',
-						'Authorization': `Bearer ${cfg.openaiApiKey}`
+						'Authorization': `Bearer ${AIService.getOpenAiKey()}`
 					},
 					body: JSON.stringify({
 						model: model,
@@ -936,12 +948,11 @@ You are a helpful coding assistant. Answer concisely.
 				let fullText = '';
 				for await (const part of responseStream) {
 					
-					// 处理思考逻辑 (Puter 使用 reasoning 字段, OpenAI 部分模型也支持)
+					// 处理思考消息
 					if(part.reasoning && think === 0){
 						think = 1;
 						fullText += `<details class="think __pChatSystemElement__" open><summary>[THINK]</summary>\n\n`;
 					}
-					
 					if(part.reasoning){
 						fullText += part.reasoning;
 					}
@@ -968,18 +979,15 @@ You are a helpful coding assistant. Answer concisely.
 							if (from.isEqualNode(to)) {
 								return false;
 							}
-
 							// 保持 details 的打开状态
 							if (from.tagName === 'DETAILS') {
 								to.open = from.open;
 							}
-
 							// 保持 pre 的滚动条状态
 							if (from.tagName === 'PRE') {
 								to.scrollLeft = from.scrollLeft;
 								to.scrollTop = from.scrollTop;
 							}
-
 							return true;
 						},
 					});
@@ -1483,7 +1491,7 @@ You are a helpful coding assistant. Answer concisely.
 <details class="think model-service" data-service="Puter.js" open><summary>Puter.js</summary>
 	<h2>优先显示模型</h2>
 	<table class="input-config-table">
-		<tr><td>优先匹配模型列表:</td>
+		<tr><td>优先匹配模型列表</td>
 			<td><input id="puterPriorityModelsInput" name="puterPriorityModels" type="text" placeholder="qwen3-max, gemini-3-pro, deepseek-v3.2-exp" value=""></td>
 		</tr>
 	</table>
@@ -1496,13 +1504,13 @@ You are a helpful coding assistant. Answer concisely.
 <details class="think model-service" data-service="OpenAI-API"><summary>OpenAI API</summary>
 	<h2>API 配置</h2>
 	<table class="input-config-table">
-		<tr><td>API 端点:</td>
+		<tr><td>BASE URL</td>
 			<td><input id="openaiApiEndpointInput" name="openaiApiEndpoint" type="url" placeholder="https://api.openai.com/v1"></td>
 		</tr>
-		<tr><td>API 密钥:</td>
-			<td><input id="openaiApiKeyInput" name="openaiApiKey" type="text" placeholder="sk-xxxxxxxxxxxxxxxxxxxxxx"></td>
+		<tr><td>API 密钥 <code>[<span id="openaiApiKeyCount">0</span>]</code></td>
+			<td><input id="openaiApiKeyInput" name="openaiApiKey" type="text" placeholder="sk-xxxxxx, sk-xxxxxx, sk-xxxxxx"></td>
 		</tr>
-		<tr><td>优先匹配模型列表:</td>
+		<tr><td>优先匹配模型列表</td>
 			<td><input id="openaiPriorityModelsInput" name="openaiPriorityModels" type="text" placeholder="qwen3-max, gemini-3-pro, deepseek-v3.2-exp"></td>
 		</tr>
 	</table>
@@ -1510,6 +1518,7 @@ You are a helpful coding assistant. Answer concisely.
 		推荐使用 <a href="https://github.com/xixu-me/Xget?tab=readme-ov-file#ai-inference-providers" target="_blank">Xget</a> 代理,
 		通过我们的部署, 例如: <code>https://xget.ipacel.cc/ip/openrouter/api/v1</code>
 	</p>
+	<p>支持添加多个 API 密钥, 轮询调用.</p>
 </details>
 `;
 
@@ -1521,6 +1530,7 @@ You are a helpful coding assistant. Answer concisely.
 		const puterPriorityModelsInput = document.getElementById('puterPriorityModelsInput');
 		const openaiApiEndpointInput = document.getElementById('openaiApiEndpointInput');
 		const openaiApiKeyInput = document.getElementById('openaiApiKeyInput');
+		const openaiApiKeyCount = document.getElementById('openaiApiKeyCount');
 		const openaiPriorityModelsInput = document.getElementById('openaiPriorityModelsInput');
 
 		// 配置页面数据更新和监听
@@ -1555,9 +1565,15 @@ You are a helpful coding assistant. Answer concisely.
 			openaiApiEndpointInput.value = cfg.openaiApiEndpoint;
 			openaiApiEndpointInput.addEventListener('input', (event) => cfg.setItem('openaiApiEndpoint', event.target.value));
 
-			// openaiApiKey: '',
-			openaiApiKeyInput.value = cfg.openaiApiKey;
-			openaiApiKeyInput.addEventListener('input', (event) => cfg.setItem('openaiApiKey', event.target.value));
+			// openaiApiKey: [],
+			if(typeof cfg.openaiApiKey === 'string') cfg.openaiApiKey = [ cfg.openaiApiKey ]; // 兼容旧版本数据
+			openaiApiKeyInput.value = cfg.openaiApiKey.join(', ');
+			openaiApiKeyCount.innerText = cfg.openaiApiKey.length;
+			openaiApiKeyInput.addEventListener('input', () => {
+				const list = openaiApiKeyInput.value.split(/\,|\;|，|；/).map(s => s.trim()).filter(s => s);
+				cfg.setItem('openaiApiKey', list);
+				openaiApiKeyCount.innerText = list.length;
+			});
 
 			// openaiPriorityModels: [],
 			openaiPriorityModelsInput.value = cfg.openaiPriorityModels.join(', ');
