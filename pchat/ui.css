@@ -696,7 +696,7 @@ h1 { font-size: 14px; font-weight: normal; letter-spacing: 1px; color: #fff; fon
 .markdown-body ol > li:last-child,
 .markdown-body li > *:last-child,
 .markdown-body details > *:last-child {
-	margin-bottom: 0;
+	margin-bottom: 0 !important;
 }
 .markdown-body > *:first-child {
 	margin-top: 0 !important;
