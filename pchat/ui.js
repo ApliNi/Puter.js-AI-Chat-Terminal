@@ -6,6 +6,10 @@ console.log(String.raw`%c
 | %cApliNi - pChat%c    [Q_Q]
 `, 'color: #008fff', 'color: #17d9ff', 'color: #008fff');
 
+if ('serviceWorker' in navigator) {
+	navigator.serviceWorker.register('/sw.js', { scope: '/' });
+}
+
 import DOMPurify from 'https://cdn.jsdelivr.net/npm/dompurify@3.3.1/+esm';
 import hljs from 'https://cdn.jsdelivr.net/npm/highlight.js@11.11.1/+esm';
 import Katex from 'https://cdn.jsdelivr.net/npm/katex@0.16.27/+esm';
