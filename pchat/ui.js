@@ -1533,56 +1533,62 @@ You are a helpful coding assistant. Answer concisely.
 		const openaiApiKeyCount = document.getElementById('openaiApiKeyCount');
 		const openaiPriorityModelsInput = document.getElementById('openaiPriorityModelsInput');
 
-		// 配置页面数据更新和监听
-		if(true){
+		let openaiApiModify = false;
 
-			// modelService: '',
-			const modelServiceList = document.querySelectorAll('.config details.model-service');
-			for(const e of modelServiceList){
-				const service = e.dataset.service;
-				e.open = cfg.modelService === service;
-				e.addEventListener('toggle', () => {
-					if(!e.open) return;
-					// 折叠其他所有服务
-					setTimeout(() => {
-						for(const e2 of modelServiceList){
-							if(service !== e2.dataset.service) e2.open = false;
-						}
-					}, 100);
-					// 保存选择的服务
-					cfg.setItem('modelService', service);
-				});
-			}
-			
-			// puterPriorityModels: [],
-			puterPriorityModelsInput.value = cfg.puterPriorityModels.join(', ');
-			puterPriorityModelsInput.addEventListener('input', () => {
-				const list = puterPriorityModelsInput.value.split(/\,|\;|，|；/).map(s => s.trim()).filter(s => s);
-				cfg.setItem('puterPriorityModels', list);
+		// --- 配置页面数据更新和监听 ---
+
+		// modelService: '',
+		const modelServiceList = document.querySelectorAll('.config details.model-service');
+		for(const e of modelServiceList){
+			const service = e.dataset.service;
+			e.open = cfg.modelService === service;
+			e.addEventListener('toggle', () => {
+				if(!e.open) return;
+				// 折叠其他所有服务
+				setTimeout(() => {
+					for(const e2 of modelServiceList){
+						if(service !== e2.dataset.service) e2.open = false;
+					}
+				}, 100);
+				// 保存选择的服务
+				cfg.setItem('modelService', service);
 			});
-
-			// openaiApiEndpoint: '',
-			openaiApiEndpointInput.value = cfg.openaiApiEndpoint;
-			openaiApiEndpointInput.addEventListener('input', (event) => cfg.setItem('openaiApiEndpoint', event.target.value));
-
-			// openaiApiKey: [],
-			if(typeof cfg.openaiApiKey === 'string') cfg.openaiApiKey = [ cfg.openaiApiKey ]; // 兼容旧版本数据
-			openaiApiKeyInput.value = cfg.openaiApiKey.join(', ');
-			openaiApiKeyCount.innerText = cfg.openaiApiKey.length;
-			openaiApiKeyInput.addEventListener('input', () => {
-				const list = openaiApiKeyInput.value.split(/\,|\;|，|；/).map(s => s.trim()).filter(s => s);
-				cfg.setItem('openaiApiKey', list);
-				openaiApiKeyCount.innerText = list.length;
-			});
-
-			// openaiPriorityModels: [],
-			openaiPriorityModelsInput.value = cfg.openaiPriorityModels.join(', ');
-			openaiPriorityModelsInput.addEventListener('input', () => {
-				const list = openaiPriorityModelsInput.value.split(/\,|\;|，|；/).map(s => s.trim()).filter(s => s);
-				cfg.setItem('openaiPriorityModels', list);
-			});
-
 		}
+		
+		// puterPriorityModels: [],
+		puterPriorityModelsInput.value = cfg.puterPriorityModels.join(', ');
+		puterPriorityModelsInput.addEventListener('input', () => {
+			const list = puterPriorityModelsInput.value.split(/\,|\;|，|；/).map(s => s.trim()).filter(s => s);
+			cfg.setItem('puterPriorityModels', list);
+		});
+
+		// openaiApiEndpoint: '',
+		openaiApiEndpointInput.value = cfg.openaiApiEndpoint;
+		openaiApiEndpointInput.addEventListener('input', (event) => {
+			cfg.setItem('openaiApiEndpoint', event.target.value);
+			openaiApiModify = true;
+		});
+
+		// openaiApiKey: [],
+		if(typeof cfg.openaiApiKey === 'string') cfg.openaiApiKey = [ cfg.openaiApiKey ]; // 兼容旧版本数据
+		openaiApiKeyInput.value = cfg.openaiApiKey.join(', ');
+		openaiApiKeyCount.innerText = cfg.openaiApiKey.length;
+		openaiApiKeyInput.addEventListener('input', () => {
+			const list = openaiApiKeyInput.value.split(/\,|\;|，|；/).map(s => s.trim()).filter(s => s);
+			cfg.setItem('openaiApiKey', list);
+			openaiApiKeyCount.innerText = list.length;
+			openaiApiModify = true;
+		});
+
+		// openaiPriorityModels: [],
+		openaiPriorityModelsInput.value = cfg.openaiPriorityModels.join(', ');
+		openaiPriorityModelsInput.addEventListener('input', () => {
+			const list = openaiPriorityModelsInput.value.split(/\,|\;|，|；/).map(s => s.trim()).filter(s => s);
+			cfg.setItem('openaiPriorityModels', list);
+			openaiApiModify = true;
+		});
+
+		// --- 配置页面 ---
 
 		// 打开配置界面
 		configBtn.addEventListener('click', async () => {
@@ -1605,7 +1611,10 @@ You are a helpful coding assistant. Answer concisely.
 				rightPanel.querySelector('& > .config').style.display = 'none';
 
 				// 重新加载模型列表
-				AIService.loadModels();
+				if(openaiApiModify){
+					openaiApiModify = false;
+					AIService.loadModels();
+				}
 			}
 			sidebarToggle.checked = false;
 		});
