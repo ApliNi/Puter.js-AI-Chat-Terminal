@@ -668,7 +668,9 @@ window.addEventListener('DOMContentLoaded', async () => {
 			role: 'system',
 			isRaw: false,
 			isCollapsed: true,
-			content: cfg.defaultSystemPrompt,
+			content: [
+				{ type: 'text', text: cfg.defaultSystemPrompt },
+			],
 			id: generateId(),
 		};
 		
@@ -923,12 +925,13 @@ window.addEventListener('DOMContentLoaded', async () => {
 			const currentModel = modelSelect.value;
 			toggleState(true);
 
-			let msgDiv, contextHistory, uiElements;
+			let msgIdx, msgDiv, contextHistory, uiElements, thisContext;
 
 			if (msgId) {
-				const targetIndex = chatHistory.findIndex(m => m.id === msgId);
-				if (targetIndex === -1) { toggleState(false); return; }
-				contextHistory = chatHistory.slice(0, targetIndex);
+				msgIdx = chatHistory.findIndex(m => m.id === msgId);
+				if (msgIdx === -1) { toggleState(false); return; }
+				contextHistory = chatHistory.slice(0, msgIdx);
+				thisContext = chatHistory[msgIdx];
 				
 				msgDiv = document.getElementById(msgId);
 				const contentDiv = msgDiv.querySelector('.content');
@@ -942,13 +945,23 @@ window.addEventListener('DOMContentLoaded', async () => {
 				
 				contentDiv.textContent = '';
 				contentDiv.classList.add('cursor'); // 激活光标
-				uiElements = { contentDiv, metaDiv };
+				uiElements = { contentDiv, metaDiv, msgDiv, };
 			} else {
-				msgId = generateId();
 				contextHistory = [...chatHistory];
-				uiElements = await appendMessageToDOM({ role: 'assistant', content: '', id: msgId, model: currentModel });
-				msgDiv = document.getElementById(msgId);
+				msgId = generateId();
+				thisContext = {
+					role: 'assistant',
+					content: [ { type: 'text', text: '' } ],
+					id: msgId,
+					model: currentModel,
+					stats: '',
+				};
+				chatHistory.push(thisContext);
+				msgIdx = chatHistory.length - 1;
+				uiElements = await appendMessageToDOM(thisContext);
+				msgDiv = uiElements.msgDiv;
 				msgDiv.classList.add('isProcessing');
+				uiElements.contentDiv.contentEditable = 'false'; // 生成时禁止编辑
 				uiElements.contentDiv.classList.add('cursor'); // 新消息也激活光标
 			}
 
@@ -1064,26 +1077,11 @@ window.addEventListener('DOMContentLoaded', async () => {
 				// 震动反馈
 				vibrate(50);
 
-				const finalContent = [{ type: 'text', text: fullText }]; // 包装成数组
-
 				// 4. 更新内存中的历史记录
-				if (msgId) {
-					const targetIndex = chatHistory.findIndex(m => m.id === msgId);
-					if (targetIndex !== -1) {
-						chatHistory[targetIndex].content = finalContent;
-						chatHistory[targetIndex].model = currentModel;
-						// [新增] 保存统计信息
-						chatHistory[targetIndex].stats = statsText;
-					}
-				} else {
-					chatHistory.push({
-						role: 'assistant',
-						content: finalContent,
-						id: msgId,
-						model: currentModel,
-						stats: statsText,
-					});
-				}
+				const finalContent = [ { type: 'text', text: fullText } ];
+				chatHistory[msgIdx].content = finalContent;
+				chatHistory[msgIdx].model = currentModel;
+				chatHistory[msgIdx].stats = statsText;
 
 				// 5. 最后再一次性保存到 IndexedDB (避免频繁 IO)
 				await saveCurrentSession();
@@ -1444,7 +1442,7 @@ window.addEventListener('DOMContentLoaded', async () => {
 			// 1. 在历史记录数组中，插入到该用户消息之后
 			const newMsgObj = {
 				role: 'assistant',
-				content: '',
+				content: [ { type: 'text', text: '' } ],
 				id: newAiId,
 				model: currentModel
 			};
@@ -1452,7 +1450,7 @@ window.addEventListener('DOMContentLoaded', async () => {
 
 			// 2. 创建 DOM 元素
 			// 先通过 appendMessageToDOM 创建（默认会加到最后）
-			appendMessageToDOM({ role: 'assistant', content: '', id: newAiId, model: currentModel });
+			appendMessageToDOM(newMsgObj);
 			
 			// 3. 将 DOM 元素移动到正确位置 (即 userId 对应的元素之后)
 			const userDiv = document.getElementById(id);
