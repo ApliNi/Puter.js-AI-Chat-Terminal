@@ -1112,7 +1112,6 @@ window.addEventListener('DOMContentLoaded', async () => {
 			}
 		}
 
-		console.log(fullText);
 		if(renderHTML){
 			return DOMPurify.sanitize(await worker.run('renderMarkdown', fullText), DOMPurifyConfig);
 		}else{
@@ -1207,13 +1206,8 @@ window.addEventListener('DOMContentLoaded', async () => {
 			}
 		}
 
-		if (isRendered && !isCollapsed) {
-			// 正常渲染
-			contentArea.innerHTML += await renderContent(contentArray);
-		} else {
-			// 显示摘要
-			contentArea.innerHTML += await renderContent(contentArray, false);
-		}
+		// 正常渲染或显示摘要
+		contentArea.innerHTML += await renderContent(contentArray, (isRendered && !isCollapsed));
 
 		if (stats) {
 			msgDiv.querySelector('.meta-stats').innerText = stats;
