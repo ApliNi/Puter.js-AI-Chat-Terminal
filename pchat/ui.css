@@ -301,7 +301,7 @@ h1 { font-size: 14px; font-weight: normal; letter-spacing: 1px; color: #fff; fon
 	backdrop-filter: blur(5px);
 	border-bottom: 1px solid rgba(255, 255, 255, 0.05);
 	
-	margin: -10px -15px 18px -15px; /* 抵消 .message 的 padding */
+	margin: -10px -15px 21px -15px; /* 抵消 .message 的 padding */
 	padding: 8px 15px;
 	
 	font-size: 10px;
@@ -315,7 +315,7 @@ h1 { font-size: 14px; font-weight: normal; letter-spacing: 1px; color: #fff; fon
 }
 
 .role-label + * {
-	margin-top: -5px;
+	margin-top: -8px;
 }
 
 .content {
