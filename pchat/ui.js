@@ -933,13 +933,13 @@ window.addEventListener('DOMContentLoaded', async () => {
 			const currentModel = modelSelect.value;
 			toggleState(true);
 
-			let msgIdx, msgDiv, contextHistory, uiElements, thisContext;
+			let msgIdx, msgDiv, contentHistory, uiElements, thisContent;
 
 			if (msgId) {
 				msgIdx = chatHistory.findIndex(m => m.id === msgId);
 				if (msgIdx === -1) { toggleState(false); return; }
-				contextHistory = chatHistory.slice(0, msgIdx);
-				thisContext = chatHistory[msgIdx];
+				contentHistory = chatHistory.slice(0, msgIdx);
+				thisContent = chatHistory[msgIdx];
 				
 				msgDiv = document.getElementById(msgId);
 				const contentDiv = msgDiv.querySelector('.content');
@@ -954,18 +954,18 @@ window.addEventListener('DOMContentLoaded', async () => {
 				contentDiv.textContent = '';
 				uiElements = { contentDiv, metaDiv, msgDiv, };
 			} else {
-				contextHistory = [...chatHistory];
+				contentHistory = [...chatHistory];
 				msgId = generateId();
-				thisContext = {
+				thisContent = {
 					role: 'assistant',
 					content: [ { type: 'text', text: '' } ],
 					id: msgId,
 					model: currentModel,
 					stats: '',
 				};
-				chatHistory.push(thisContext);
+				chatHistory.push(thisContent);
 				msgIdx = chatHistory.length - 1;
-				uiElements = await appendMessageToDOM(thisContext);
+				uiElements = await appendMessageToDOM(thisContent);
 				msgDiv = uiElements.msgDiv;
 				msgDiv.classList.add('isProcessing');
 			}
@@ -981,7 +981,7 @@ window.addEventListener('DOMContentLoaded', async () => {
 			try {
 
 				// 过滤无关的数据
-				const apiHistory = contextHistory.map(({role, content}) => {
+				const apiHistory = contentHistory.map(({role, content}) => {
 					if(!Array.isArray(content)) content = [ { type: 'text', text: content } ];
 
 					const _content = content.map((c) => { switch (c.type) {
@@ -1000,25 +1000,18 @@ window.addEventListener('DOMContentLoaded', async () => {
 
 				// 2. 循环处理流数据
 				let isRendering = 0;
-				let think = 0;
-				let fullText = '';
+				let think = false;
+				let textItem = { type: 'text', text: '', reasoning: '' };
 				for await (const part of responseStream) {
 					
-					// 处理思考消息
-					if(part.reasoning && think === 0){
-						think = 1;
-						fullText += `<details class="think __pChat__"><summary>[THINK]</summary>\n\n`;
-					}
 					if(part.reasoning){
-						fullText += part.reasoning;
+						think = true;
+						textItem.reasoning += part.reasoning;
 					}
 
 					if(part.text){
-						if (think === 1) {
-							think = 2;
-							fullText += `\n\n</details>\n\n`;
-						}
-						fullText += part.text;
+						think = false;
+						textItem.text += part.text;
 					}
 
 					// 延迟渲染, 防止卡顿
@@ -1026,12 +1019,9 @@ window.addEventListener('DOMContentLoaded', async () => {
 					while(isRendering === 1) await new Promise((resolve) => setTimeout(resolve, 20));
 					isRendering += 1;
 
-					let tempFullText = fullText;
-					if(think === 1) tempFullText += `\n\n</details>\n\n`;
-
 					// 渲染新内容
-					const newHtmlContent = DOMPurify.sanitize(await worker.run('renderMarkdown', tempFullText), DOMPurifyConfig);
-					morphdom(uiElements.contentDiv, `<div>${newHtmlContent}</div>`, {
+					const htmlContent = await renderContent([ textItem ]);
+					morphdom(uiElements.contentDiv, `<div>${htmlContent}</div>`, {
 						childrenOnly: true,
 						onBeforeElUpdated: (from, to) => {
 							// 如果节点内容完全一致, 直接跳过更新
@@ -1051,15 +1041,17 @@ window.addEventListener('DOMContentLoaded', async () => {
 						},
 					});
 
-					if (think === 1) {
-						uiElements.contentDiv.querySelector('.think.__pChat__').open = true;
+					const thinkEl = uiElements.contentDiv.querySelector('.think.__pChat__');
+
+					if (think && thinkEl) {
+						thinkEl.open = true;
 					}
 
 					// 思考完毕后折叠思考内容
-					if (think === 2) {
+					if (!think && thinkEl) {
 						think = 0;
 						setTimeout(() => {
-							uiElements.contentDiv.querySelector('.think.__pChat__').open = false;
+							thinkEl.open = false;
 						}, 200);
 					}
 
@@ -1074,15 +1066,15 @@ window.addEventListener('DOMContentLoaded', async () => {
 				// 传输结束后的统计
 				clearInterval(timerInterval);
 				const duration = ((Date.now() - startTime) / 1000).toFixed(2);
-				const estimatedTokens = Math.max(1, Math.round(fullText.length / 2.5)); // 估算 Token
+				const estimatedTokens = Math.max(1, Math.round((textItem.text.length + textItem.reasoning.length) / 2.5)); // 估算 Token
 				const tps = (estimatedTokens / duration).toFixed(1);
 				// 定义统计文本变量
 				const statsText = `Time: ${duration}s | ${tps} Token/s`;
 				uiElements.metaDiv.innerText = statsText;
 
 				// 更新内存中的历史记录
-				const finalContent = [ { type: 'text', text: fullText } ];
-				chatHistory[msgIdx].content = finalContent;
+				if(textItem.reasoning === '') delete textItem.reasoning;
+				chatHistory[msgIdx].content = [ textItem ];
 				chatHistory[msgIdx].model = currentModel;
 				chatHistory[msgIdx].stats = statsText;
 
@@ -1106,6 +1098,27 @@ window.addEventListener('DOMContentLoaded', async () => {
 			}
 		},
 	};
+
+	async function renderContent(content, renderHTML = true) {
+		if(!Array.isArray(content)) content = [ { type: 'text', text: content } ];
+
+		let fullText = '';
+		for(const item of content){
+			if(item.type === 'text'){
+				if(item.reasoning && renderHTML){
+					fullText += `<details class="think __pChat__"><summary>[THINK]</summary>\n\n${item.reasoning}\n\n</details>\n\n`;
+				}
+				fullText += item.text;
+			}
+		}
+
+		console.log(fullText);
+		if(renderHTML){
+			return DOMPurify.sanitize(await worker.run('renderMarkdown', fullText), DOMPurifyConfig);
+		}else{
+			return fullText;
+		}
+	}
 
 	async function appendMessageToDOM({
 		role,
@@ -1196,18 +1209,10 @@ window.addEventListener('DOMContentLoaded', async () => {
 
 		if (isRendered && !isCollapsed) {
 			// 正常渲染
-			for(const item of contentArray){
-				if(item.type === 'text'){
-					contentArea.innerHTML += DOMPurify.sanitize(await worker.run('renderMarkdown', item.text), DOMPurifyConfig);
-				}
-			}
+			contentArea.innerHTML += await renderContent(contentArray);
 		} else {
 			// 显示摘要
-			for(const item of contentArray){
-				if(item.type === 'text'){
-					contentArea.textContent += item.text;
-				}
-			}
+			contentArea.innerHTML += await renderContent(contentArray, false);
 		}
 
 		if (stats) {
@@ -1237,15 +1242,12 @@ window.addEventListener('DOMContentLoaded', async () => {
 	async function updateHistoryContent(id, newText) {
 		const item = chatHistory.find(m => m.id === id);
 		if (item) {
-			if(Array.isArray(item.content)){
-				for(const c of item.content){
-					if(c.type === 'text'){
-						c.text = newText;
-						break;
-					}
+			if(!Array.isArray(item.content)) item.content = [ { type: 'text', text: item.content } ];
+			for(const c of item.content){
+				if(c.type === 'text'){
+					c.text = newText;
+					break;
 				}
-			}else{
-				item.content = newText;
 			}
 			await saveCurrentSession();
 		}
@@ -1369,10 +1371,11 @@ window.addEventListener('DOMContentLoaded', async () => {
 			const currentRawText = contentDiv.innerText;
 			// 2. 确保历史记录是最新的
 			if (currentRawText !== rawContent) {
-				updateHistoryContent(id, currentRawText);
+				await updateHistoryContent(id, currentRawText);
 			}
 			// 3. 渲染 Markdown
-			contentDiv.innerHTML = DOMPurify.sanitize(await worker.run('renderMarkdown', currentRawText), DOMPurifyConfig);
+			contentDiv.innerHTML = await renderContent(msgItem.content);
+			// contentDiv.innerHTML = DOMPurify.sanitize(await worker.run('renderMarkdown', currentRawText), DOMPurifyConfig);
 			// contentDiv.innerHTML = DOMPurify.sanitize(marked.parse(currentRawText), DOMPurifyConfig);
 			// 4. 禁止编辑 (渲染后的 HTML 不适合直接编辑)
 			contentDiv.contentEditable = 'false';

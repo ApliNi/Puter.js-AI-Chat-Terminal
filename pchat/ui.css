@@ -351,6 +351,8 @@ h1 { font-size: 14px; font-weight: normal; letter-spacing: 1px; color: #fff; fon
 .content.collapsed ul,
 .content.collapsed ol {
     padding-left: 0;
+}.content.collapsed > details.think.__pChat__ {
+	display: none;
 }
 
 .msg-footer {
