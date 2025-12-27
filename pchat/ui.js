@@ -295,12 +295,13 @@ window.addEventListener('DOMContentLoaded', async () => {
 
 	// 添加小方块
 	function addMinimapItem(role, id, isCollapsed = false) {
-		const item = document.createElement('div');
+		const item = document.createElement('a');
 		item.className = `minimap-item ${role} ${isCollapsed ? 'collapsed' : ''}`;
-		item.dataset.targetId = id; // 绑定对应消息的 ID
+		item.href = `#${id}`;
 		
 		// 点击滚动到对应消息
-		item.onclick = () => {
+		item.onclick = function(event) {
+			event.preventDefault();
 			const target = document.getElementById(id);
 			if (target) {
 				target.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -316,7 +317,7 @@ window.addEventListener('DOMContentLoaded', async () => {
 
 	// 移除小方块
 	function removeMinimapItem(id) {
-		const item = minimap.querySelector(`.minimap-item[data-target-id="${id}"]`);
+		const item = minimap.querySelector(`.minimap-item[href="#${id}"]`);
 		if (item) item.remove();
 	}
 
@@ -1409,7 +1410,7 @@ window.addEventListener('DOMContentLoaded', async () => {
 		btn.innerText = msgItem.isCollapsed ? '[+]' : '[-]';
 		btn.dataset.isCollapsed = msgItem.isCollapsed;
 
-		const minimapItem = document.querySelector(`.minimap-item[data-target-id="${id}"]`);
+		const minimapItem = document.querySelector(`.minimap-item[href="#${id}"]`);
 		if (minimapItem) {
 			if (msgItem.isCollapsed) {
 				minimapItem.classList.add('collapsed');
@@ -1950,7 +1951,7 @@ You are a helpful coding assistant. Answer concisely.</pre>
 			const x = (window.innerWidth - img.offsetWidth) / 2;
 			const y = (window.innerHeight - img.offsetHeight) / 2;
 
-			img.style.transition = `transform 0.4s ease, top 0.4s ease, left 0.4s ease`;
+			img.style.transition = `transform 0.4s ease, top 0.4s ease, left 0.4s ease, opacity 0.4s ease`;
 
 			img.style.left = `${x}px`;
 			img.style.top = `${y}px`;
@@ -2009,9 +2010,9 @@ You are a helpful coding assistant. Answer concisely.</pre>
 
 			if(step === 0.01){
 				// 可能是通过触摸板进行缩放, 调低过度动画时间
-				img.style.transition = `transform 0.25s ease, top 0.4s ease, left 0.4s ease`;
+				img.style.transition = `transform 0.25s ease, top 0.4s ease, left 0.4s ease, opacity 0.4s ease`;
 			}else{
-				img.style.transition = `transform 0.4s ease, top 0.4s ease, left 0.4s ease`;
+				img.style.transition = `transform 0.4s ease, top 0.4s ease, left 0.4s ease, opacity 0.4s ease`;
 			}
 
 			scale += (event.deltaY < 0)? step : -step;
