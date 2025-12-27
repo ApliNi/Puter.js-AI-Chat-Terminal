@@ -247,11 +247,14 @@ window.addEventListener('DOMContentLoaded', async () => {
 		lastSessionId: null,
 		lastModel: null,
 		defaultSystemPrompt: '',
+
 		modelService: 'Puter.js',
 		puterPriorityModels: ['qwen3-max', 'gemini-3-pro', 'gemini-2.5', 'deepseek-v3.2-exp', 'claude-sonnet-4-5', 'gpt-4.1'],
 		openaiApiEndpoint: '',
 		openaiApiKey: [],
 		openaiPriorityModels: [],
+
+		modelServiceList: [],
 
 		...await IDBManager.getConfig(),
 		setItem: (id, value) => {
@@ -1712,6 +1715,8 @@ You are a helpful coding assistant. Answer concisely.</pre>
 	</p>
 	<p>支持添加多个 API 密钥, 轮询调用</p>
 </details>
+
+<div id="modelServiceList"></div>
 `;
 
 		const configBtn = document.getElementById('config-btn');
@@ -1725,6 +1730,8 @@ You are a helpful coding assistant. Answer concisely.</pre>
 		const openaiApiKeyInput = document.getElementById('openaiApiKeyInput');
 		const openaiApiKeyCount = document.getElementById('openaiApiKeyCount');
 		const openaiPriorityModelsInput = document.getElementById('openaiPriorityModelsInput');
+
+		const modelServiceListDom = document.getElementById('modelServiceList');
 
 		let openaiApiModify = false;
 
@@ -1956,8 +1963,9 @@ You are a helpful coding assistant. Answer concisely.</pre>
 			img.style.transform = `scale(0.9)`;
 			imgBox.classList.add('open');
 		});
+		window.addEventListener('resize', onResize);
 
-		document.body.addEventListener('mousedown', (event) => {
+		imgBox.addEventListener('mousedown', (event) => {
 			// 要求左键点击
 			if(event.button !== 0) return;
 
@@ -1968,8 +1976,8 @@ You are a helpful coding assistant. Answer concisely.</pre>
 				if(moveX === event.clientX && moveY === event.clientY){
 					imgBox.classList.remove('open');
 				}
-				document.removeEventListener('mouseup', onMouseUp);
-				document.removeEventListener('mouseup', onMouseMove);
+				imgBox.removeEventListener('mouseup', onMouseUp);
+				imgBox.removeEventListener('mouseup', onMouseMove);
 			};
 
 			const onMouseMove = (event) => {
@@ -1977,14 +1985,8 @@ You are a helpful coding assistant. Answer concisely.</pre>
 				moveY = event.clientY;
 			};
 
-			document.addEventListener('mouseup', onMouseUp);
-			document.addEventListener('mousemove', onMouseMove);
-		});
-
-		window.addEventListener('resize', onResize);
-		img.addEventListener('load', () => {
-			onResize();
-			img.style.opacity = 1;
+			imgBox.addEventListener('mouseup', onMouseUp);
+			imgBox.addEventListener('mousemove', onMouseMove);
 		});
 
 		// 如果元素 (即将) 超出视口, 则重置位置
@@ -2000,7 +2002,7 @@ You are a helpful coding assistant. Answer concisely.</pre>
 		};
 
 		let scale = 1;
-		document.body.onwheel = (event) => {
+		imgBox.onwheel = (event) => {
 
 			// (Abs(滚轮步进距离 / 1000), 限制不小于 0.01, 不大于 0.2. 乘 Abs(当前缩放比例)), 不小于 0.01
 			const step = Math.max(Math.min(Math.max(Math.abs(event.deltaY / 1000), 0.01), 0.2) * Math.abs(scale), 0.01);
@@ -2037,14 +2039,14 @@ You are a helpful coding assistant. Answer concisely.</pre>
 			};
 
 			const onMouseUp = () => {
-				document.removeEventListener('mousemove', onMouseMove);
-				document.removeEventListener('mouseup', onMouseUp);
+				imgBox.removeEventListener('mousemove', onMouseMove);
+				imgBox.removeEventListener('mouseup', onMouseUp);
 
 				runAway();
 			};
 
-			document.addEventListener('mousemove', onMouseMove);
-			document.addEventListener('mouseup', onMouseUp);
+			imgBox.addEventListener('mousemove', onMouseMove);
+			imgBox.addEventListener('mouseup', onMouseUp);
 		});
 	}
 
